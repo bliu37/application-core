@@ -1,0 +1,7 @@
+forward_length: 2.0
+backard_length: 1.0
+left_width: 0.6
+right_width: 0.6
+is_split_foreground_object: true
+split_interval: 0.3
+start_id: 20000

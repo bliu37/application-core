@@ -1,0 +1,14 @@
+item {name: "Static Transform",code: 3501001, type: MAINBOARD_PROCESS_GROUP, value: "static_transform", level: FATAL}
+item {name: "GNSS DRIVER", code: 2201001, type: MAINBOARD_PROCESS_GROUP, value: "gnss", level: FATAL}
+item {name: "Localization Process Group", code: 3001001, type: MAINBOARD_PROCESS_GROUP, value: "localization", level: FATAL}
+item {name: "LIDAR DRIVER", code: 2001001, type: MAINBOARD_PROCESS_GROUP, value: "lidar", level: FATAL}
+item {name: "Perception Process Group", code: 3101001, type: MAINBOARD_PROCESS_GROUP, value: "perception", level: FATAL}
+item {name: "Storytelling Process Group", code: 3201002, type: MAINBOARD_PROCESS_GROUP, value: "storytelling", level: ERROR}
+item {name: "PREDICTION Process Group", code: 3201001,type: MAINBOARD_PROCESS_GROUP, value: "prediction", level: FATAL}
+item {name: "Planning", code: 3301001, type: MAINBOARD_PROCESS_GROUP, value: "planning", level: FATAL}
+item {name: "Control", code: 3401001, type: MAINBOARD_PROCESS_GROUP, value: "control", level: FATAL}
+item {name: "Canbus", code: 2301001, type: MAINBOARD_PROCESS_GROUP, value: "canbus", level: FATAL}
+item {name: "Statistics Process Group", code: 3601001, type: MAINBOARD_PROCESS_GROUP, value: "statistics", level: ERROR}
+item {name: "DreamviewPlus Process", code: 3701001, type: GENERAL_PROCESS, value: "dreamview_plus", level: WARN}
+item {name: "Recorder Process", code: 1101001, type: GENERAL_PROCESS, value: "cyber_recorder record", level: ERROR}
+item {name: "Data Clean Process", code: 1101002, type: GENERAL_PROCESS, value: "data_cleaner", level: WARN}

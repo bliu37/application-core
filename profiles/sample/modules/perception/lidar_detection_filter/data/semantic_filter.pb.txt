@@ -1,0 +1,35 @@
+filter_type: "noise"
+filter_type: "ground"
+filter_type: "curb"
+# filter_type: "VEGETATION"
+ground_prob_thr: 0.01
+ground_height_thr: 0.15
+is_filter_cone: false
+only_filter_cluster: false
+
+front_critical_filter {
+    semantic_type: "noise"
+    filter_strategy: 1
+    height_thres: 0.0
+}
+front_critical_filter {
+    semantic_type: "curb"
+    filter_strategy: 1
+    height_thres: 0.0
+}
+front_critical_filter {
+    semantic_type: "ignore"
+    filter_strategy: 1
+    height_thres: 0.0
+}
+front_critical_filter {
+    semantic_type: "ground"
+    filter_strategy: 0
+    height_thres: 0.0
+}
+# temporarily reserve
+front_critical_filter {
+    semantic_type: "VEGETATION"
+    filter_strategy: 0
+    height_thres: 0.6
+}

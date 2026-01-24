@@ -1,0 +1,6 @@
+open_space_prediction_time_period: 5.0
+open_space_fallback_collision_distance: 0.1
+open_space_fallback_stop_distance: 2.0
+open_space_fallback_collision_time_buffer: 5.0
+is_use_trajectory_pose: true
+distance_to_obs: 0.1

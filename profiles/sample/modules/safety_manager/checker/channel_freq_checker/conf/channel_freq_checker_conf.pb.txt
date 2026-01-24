@@ -1,0 +1,28 @@
+# sensor drivers
+item {name: "/apollo/sensor/lidar/compensator/PointCloud2", code: 2002006, level: ERROR, expect_freq: 10, lower_limit: 6, upper_limit: 15}
+#item {name: "/apollo/sensor/camera/front/image", level: ERROR, expect_freq: 10, lower_limit: 6, upper_limit: 20}
+#item {name: "/apollo/sensor/camera/rear/image", level: ERROR, expect_freq: 10, lower_limit: 6, upper_limit: 20}
+#item {name: "/apollo/sensor/radar/front", level: ERROR, expect_freq: 15, lower_limit: 8, upper_limit: 30}
+
+# perception and prediction
+item {name: "/apollo/perception/obstacles", code: 3102001, level: ERROR, expect_freq: 10, lower_limit: 6, upper_limit: 15}
+
+# prediction channel
+item {name: "/apollo/prediction", code: 3202001, level: ERROR, expect_freq: 10, lower_limit: 6, upper_limit: 15}
+
+# pnc channel
+item {name: "/apollo/planning", code: 3302001, level: ERROR, expect_freq: 10, lower_limit: 6, upper_limit: 15}
+item {name: "/apollo/control", code: 3402001, level: ERROR, expect_freq: 100, lower_limit: 60, upper_limit: 150}
+item {name: "/apollo/canbus/chassis", code: 2302001, level: ERROR, expect_freq: 100, lower_limit: 60, upper_limit: 150}
+item {name: "/apollo/canbus/chassis_detail", code: 2302002, level: ERROR, expect_freq: 100, lower_limit: 60, upper_limit: 150}
+
+# guardian
+item {name: "/apollo/guardian", code: 3802001, level: ERROR, expect_freq: 100, lower_limit: 60, upper_limit: 150}
+
+# localization channel
+item {name: "/apollo/sensor/gnss/best_pose", code: 2202001, level: ERROR, expect_freq: 1, lower_limit: 0.3, upper_limit: 10}
+item {name: "/apollo/sensor/gnss/corrected_imu", code: 2202002, level: ERROR, expect_freq: 100, lower_limit: 60, upper_limit: 150}
+item {name: "/apollo/localization/pose", code: 3002001, level: ERROR, expect_freq: 100, lower_limit: 60, upper_limit: 150}
+
+# tf
+item {name: "/tf", code: 3002002, level: ERROR, expect_freq: 100, lower_limit: 60, upper_limit: 150}

@@ -1,0 +1,3 @@
+heading_offset_to_midpoint: 0.4
+lateral_offset_to_midpoint: 0.12
+longitudinal_offset_to_midpoint: 0.12

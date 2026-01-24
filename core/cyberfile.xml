@@ -2,7 +2,7 @@
   <name>core</name>
   <version>local</version>
   <description>
-    Apollo open source package set
+    low speed in park
   </description>
   <maintainer email="apollo-support@baidu.com">Apollo Maintainer</maintainer>
   <type>module</type>
@@ -13,7 +13,8 @@
   <!-- basic -->
   <depend repo_name="apollo-data" type="binary">apollo-data</depend>
   <depend repo_name="tools" type="binary">tools</depend>
-  <depend repo_name="apollo-scripts" type="binary">apollo-scripts</depend>
+  <depend type="binary" repo_name="apollo-scripts">apollo-scripts</depend>
+  <depend type="binary" repo_name="confgen">confgen</depend>
 
   <!-- canbus -->
   <depend repo_name="canbus" type="binary">canbus</depend>
@@ -29,15 +30,19 @@
   <depend repo_name="canbus-vehicle-zhongyun" type="binary">canbus-vehicle-zhongyun</depend>
 
   <!-- control -->
-  <depend repo_name="control-controller-demo-control-task" type="binary">control-controller-demo-control-task</depend>
+  <depend repo_name="control-controller-replan-control-task" type="binary">control-controller-replan-control-task</depend>
+  <depend repo_name="control-controller-debug-info-control-task" type="binary">control-controller-debug-info-control-task</depend>
+  <depend repo_name="control-controller-antislip-control-task" type="binary">control-controller-antislip-control-task</depend>
   <depend repo_name="control-controller-lat-based-lqr-controller" type="binary">control-controller-lat-based-lqr-controller</depend>
+  <depend repo_name="control-controller-lat-based-lqr-plus-controller" type="binary">control-controller-lat-based-lqr-plus-controller</depend>
   <depend repo_name="control-controller-lon-based-pid-controller" type="binary">control-controller-lon-based-pid-controller</depend>
-  <depend repo_name="control-controller-mpc-controller" type="binary">control-controller-mpc-controller</depend>
+  <depend repo_name="control-controller-lon-based-pid-plus-controller" type="binary">control-controller-lon-based-pid-plus-controller</depend>
+  <depend repo_name="control-task-base-extend" type="binary">control-task-base-extend</depend>
   <depend repo_name="control" type="binary">control</depend>
 
   <!-- dreamview && monitor -->
-  <depend repo_name="dreamview" type="binary">dreamview</depend>
   <depend repo_name="dreamview-plus" type="binary">dreamview-plus</depend>
+  <depend repo_name="dreamview" type="binary">dreamview</depend>
   <depend repo_name="monitor" type="binary">monitor</depend>
 
   <!-- driveres -->
@@ -46,20 +51,21 @@
   <depend repo_name="drivers-gnss" type="binary">drivers-gnss</depend>
   <depend repo_name="drivers-image-decompress" type="binary">drivers-image-decompress</depend>
   <depend repo_name="drivers-lidar" type="binary">drivers-lidar</depend>
+  <depend repo_name="drivers-lidar-fusion-and-compensator" type="binary">drivers-lidar-fusion-and-compensator</depend>
   <depend repo_name="drivers-radar" type="binary">drivers-radar</depend>
 
   <!-- external_command -->
-  <depend repo_name="external-command-action" type="binary">external-command-action</depend>
-  <depend repo_name="external-command-demo" type="binary">external-command-demo</depend>
-  <depend repo_name="external-command-lane-follow" type="binary">external-command-lane-follow</depend>
-  <depend repo_name="external-command-process" type="binary">external-command-process</depend>
-  <depend repo_name="external-command-processor-base" type="binary">external-command-processor-base</depend>
-  <depend repo_name="external-command-valet-parking" type="binary">external-command-valet-parking</depend>
-  <depend repo_name="old-routing-adpter" type="binary">old-routing-adpter</depend>
-  <depend repo_name="routing" type="binary">routing</depend>
+  <depend repo_name="external-command-chassis" type="binary">external-command-chassis</depend>
+  <depend repo_name="external-command-free-space" type="binary">external-command-free-space</depend>
+  <depend repo_name="external-command-path-follow" type="binary">external-command-path-follow</depend>
+  <depend repo_name="external-command-precise-parking" type="binary">external-command-precise-parking</depend>
+  <depend repo_name="external-command-speed" type="binary">external-command-speed</depend>
+  <depend repo_name="external-command-zone-cover" type="binary">external-command-zone-cover</depend>
 
   <!-- localization -->
   <depend repo_name="localization" type="binary">localization</depend>
+  <depend repo_name="slam-local" type="binary">slam-local</depend> 
+  <depend repo_name="localization-intergrate" type="binary">localization-intergrate</depend> 
   <!-- map -->
   <depend repo_name="map" type="binary">map</depend>
 
@@ -67,7 +73,6 @@
   <depend repo_name="perception-camera-detection-multi-stage" type="binary">perception-camera-detection-multi-stage</depend>
   <depend repo_name="perception-camera-detection-single-stage" type="binary">perception-camera-detection-single-stage</depend>
   <depend repo_name="perception-camera-detection-bev" type="binary">perception-camera-detection-bev</depend>
-  <depend repo_name="perception-camera-detection-occupancy" type="binary">perception-camera-detection-occupancy</depend>
   <depend repo_name="perception-camera-location-estimation" type="binary">perception-camera-location-estimation</depend>
   <depend repo_name="perception-camera-location-refinement" type="binary">perception-camera-location-refinement</depend>
   <depend repo_name="perception-camera-tracking" type="binary">perception-camera-tracking</depend>
@@ -77,43 +82,92 @@
   <depend repo_name="perception-lane-detection" type="binary">perception-lane-detection</depend>
   <depend repo_name="perception-lidar-detection-filter" type="binary">perception-lidar-detection-filter</depend>
   <depend repo_name="perception-lidar-detection" type="binary">perception-lidar-detection</depend>
+  <depend repo_name="perception-lidar-cpdet-detection" type="binary">perception-lidar-cpdet-detection</depend>
   <depend repo_name="perception-lidar-output" type="binary">perception-lidar-output</depend>
+  <depend repo_name="perception-lidar-segmentation" type="binary">perception-lidar-segmentation</depend>
   <depend repo_name="perception-lidar-tracking" type="binary">perception-lidar-tracking</depend>
   <depend repo_name="perception-motion-service" type="binary">perception-motion-service</depend>
   <depend repo_name="perception-msg-adapter" type="binary">perception-msg-adapter</depend>
   <depend repo_name="perception-multi-sensor-fusion" type="binary">perception-multi-sensor-fusion</depend>
   <depend repo_name="perception-pointcloud-ground-detection" type="binary">perception-pointcloud-ground-detection</depend>
   <depend repo_name="perception-pointcloud-map-based-roi" type="binary">perception-pointcloud-map-based-roi</depend>
+  <depend repo_name="perception-pointcloud-semantics" type="binary">perception-pointcloud-semantics</depend>
+  <depend repo_name="perception-pointcloud-motion" type="binary">perception-pointcloud-motion</depend>
   <depend repo_name="perception-pointcloud-preprocess" type="binary">perception-pointcloud-preprocess</depend>
   <depend repo_name="perception-radar-detection" type="binary">perception-radar-detection</depend>
-  <depend repo_name="perception-radar4d-detection" type="binary">perception-radar4d-detection</depend>
   <depend repo_name="perception-tools" type="binary">perception-tools</depend>
-  <depend repo_name="perception-launch" type="binary">perception-launch</depend>
   <depend repo_name="perception-traffic-light-detection" type="binary">perception-traffic-light-detection</depend>
   <depend repo_name="perception-traffic-light-recognition" type="binary">perception-traffic-light-recognition</depend>
   <depend repo_name="perception-traffic-light-region-proposal" type="binary">perception-traffic-light-region-proposal</depend>
   <depend repo_name="perception-traffic-light-tracking" type="binary">perception-traffic-light-tracking</depend>
+  <depend repo_name="perception-semantic-filter" type="binary">perception-semantic-filter</depend>
+  <depend repo_name="perception-mark-area-filter" type="binary">perception-mark-area-filter</depend>
+  <depend repo_name="perception-gpu-down-sample" type="binary">perception-gpu-down-sample</depend>
+  <depend repo_name="perception-bigmot-refine-filter" type="binary">perception-bigmot-refine-filter</depend>
+  <depend repo_name="perception-object-split-filter" type="binary">perception-object-split-filter</depend>
+  <depend repo_name="perception-barrier-recognition" type="binary">perception-barrier-recognition</depend>
 
   <!-- planning -->
   <depend repo_name="planning" type="binary">planning</depend>
+  <depend repo_name="planning-base" type="binary">planning-base</depend>
+  <depend repo_name="planning-open-space" type="binary">planning-open-space</depend>
+  <depend repo_name="planning-park-data-center" type="binary">planning-park-data-center</depend>
+  <depend repo_name="planning-interface-base" type="binary">planning-interface-base</depend>
+  <depend repo_name="planning-scenario-free-space" type="binary">planning-scenario-free-space</depend>
+  <depend repo_name="planning-scenario-lane-escape" type="binary">planning-scenario-lane-escape</depend>
+  <depend repo_name="planning-scenario-lane-follow-park" type="binary">planning-scenario-lane-follow-park</depend>
+  <depend repo_name="planning-scenario-large-curvature" type="binary">planning-scenario-large-curvature</depend>
+  <depend repo_name="planning-scenario-precise-parking" type="binary">planning-scenario-precise-parking</depend>
+  <depend repo_name="planning-scenario-square" type="binary">planning-scenario-square</depend>
+  <depend repo_name="planning-scenario-valet-parking-park" type="binary">planning-scenario-valet-parking-park</depend>
+  <depend repo_name="planning-task-smooth-stop-trajectory-fallback" type="binary">planning-task-smooth-stop-trajectory-fallback</depend>
+  <depend repo_name="planning-task-lane-borrow-path-generic" type="binary">planning-task-lane-borrow-path-generic</depend>
+  <depend repo_name="planning-task-lane-change-path-generic" type="binary">planning-task-lane-change-path-generic</depend>
+  <depend repo_name="planning-task-obstacle-nudge-decider" type="binary">planning-task-obstacle-nudge-decider</depend>
+  <depend repo_name="planning-task-open-space-fallback-decider-park" type="binary">planning-task-open-space-fallback-decider-park</depend>
+  <depend repo_name="planning-task-open-space-path-planning" type="binary">planning-task-open-space-path-planning</depend>
+  <depend repo_name="planning-task-open-space-replan-decider" type="binary">planning-task-open-space-replan-decider</depend>
+  <depend repo_name="planning-task-open-space-roi-decider-park" type="binary">planning-task-open-space-roi-decider-park</depend>
+  <depend repo_name="planning-task-open-space-trajectory-optimizer-park" type="binary">planning-task-open-space-trajectory-optimizer-park</depend>
+  <depend repo_name="planning-task-open-space-trajectory-post-process" type="binary">planning-task-open-space-trajectory-post-process</depend>
+  <depend repo_name="planning-task-reverse-path" type="binary">planning-task-reverse-path</depend>
+  <depend repo_name="planning-task-reverse-speed" type="binary">planning-task-reverse-speed</depend>
+  <depend repo_name="planning-task-smooth-stop-trajectory-fallback" type="binary">planning-task-smooth-stop-trajectory-fallback</depend>
+  <depend repo_name="planning-task-square-path" type="binary">planning-task-square-path</depend>
+  <depend repo_name="planning-traffic-rules-speed-setting" type="binary">planning-traffic-rules-speed-setting</depend>
+
+  <!-- storytelling -->
+  <depend repo_name="storytelling" type="binary">storytelling</depend>
 
   <!-- prediction -->
   <depend repo_name="prediction" type="binary">prediction</depend>
+  <depend repo_name="prediction-plugin-semantic-pedestrian-tensorrt" type="binary">prediction-plugin-semantic-pedestrian-tensorrt</depend>
+  <depend repo_name="prediction-plugin-semantic-vehicle-tensorrt" type="binary">prediction-plugin-semantic-vehicle-tensorrt</depend>
+  <depend repo_name="prediction-plugin-multi-agent-pedestrian-tensorrt" type="binary">prediction-plugin-multi-agent-pedestrian-tensorrt</depend>
+  <depend repo_name="prediction-plugin-multi-agent-vehicle-tensorrt" type="binary">prediction-plugin-multi-agent-vehicle-tensorrt</depend>
 
   <!-- transform -->
   <depend repo_name="transform" type="binary">transform</depend>
 
-  <!-- v2x -->
-  <depend repo_name="v2x" type="binary">v2x</depend>
+  <!-- statistics -->
+  <depend repo_name="latency-statistic" type="binary">latency-statistic</depend>
+  <depend repo_name="process-statistic" type="binary">process-statistic</depend>
+  <depend repo_name="resource-statistic" type="binary">resource-statistic</depend>
 
+  <!-- safety_manager -->
+  <depend repo_name="safety-checkers" type="binary">safety-checkers</depend>
+  <depend repo_name="safety-analyzer" type="binary">safety-analyzer</depend>
+  <depend repo_name="safety-guardian" type="binary">safety-guardian</depend>
+
+  <!-- v2x -->
+  <!-- <depend repo_name="v2x" type="binary">v2x</depend> -->
+
+  <!-- plugin -->
   <depend repo_name="sim-obstacle" type="binary">sim-obstacle</depend>
   <depend repo_name="studio-connector" type="binary">studio-connector</depend>
-  <depend repo_name="agent-server" type="binary">agent-server</depend>
-  <depend repo_name="simulator-plugin" type="binary">simulator-plugin</depend>
 
   <!-- toolbox -->
   <depend repo_name="dreamview-plus-toolbox-installer" type="binary">dreamview-plus-toolbox-installer</depend>
-
 
   <builder>bazel</builder>
 </package>

@@ -1,0 +1,35 @@
+plugins {
+    name: "ROIBoundaryFilter"
+    config_path: "perception/lidar_detection_filter/data"
+    config_file: "roi_boundary_filter.pb.txt"
+}
+# plugins {
+#     name: "BackgroundFilter"
+#     config_path: "perception/lidar_detection_filter/data"
+#     config_file: "background_filter.pb.txt"
+# }
+plugins {
+    name: "StrategyFilter"
+    config_path: "perception/lidar_detection_filter/data"
+    config_file: "strategy_filter.pb.txt"
+}
+plugins {
+    name: "SemanticFilter"
+    config_path: "perception/lidar_detection_filter/data"
+    config_file: "semantic_filter.pb.txt"
+}
+# plugins {
+#     name: "MarkAreaFilter"
+#     config_path: "perception/lidar_detection_filter/data"
+#     config_file: "mark_area_filter.pb.txt"
+# }
+plugins {
+    name: "BigmotRefineFilter"
+    config_path: "perception/lidar_detection_filter/data"
+    config_file: "bigmot_refine_filter.pb.txt"
+}
+#plugins {
+#    name: "ObjectSplitFilter"
+#    config_path: "perception/lidar_detection_filter/data"
+#    config_file: "object_split_filter.pb.txt"
+#}

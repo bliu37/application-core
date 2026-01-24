@@ -1,0 +1,142 @@
+# channel freq checker
+module_config {
+    module_library : "modules/safety_manager/checker/channel_freq_checker/libsafety_channel_freq_checker_component.so"
+    components {
+        class_name : "ChannelFreqCheckerComponent"
+        config {
+            name: "safety_channel_freq_checker"
+            config_file_path: "/apollo/modules/safety_manager/checker/channel_freq_checker/conf/channel_freq_checker_conf.pb.txt"
+            flag_file_path: "/apollo/modules/safety_manager/checker/channel_freq_checker/conf/channel_freq_checker_gflags.conf"
+        }
+    }
+}
+
+# collision checker
+module_config {
+    module_library : "modules/safety_manager/checker/collision_checker/libsafety_collision_checker_component.so"
+    timer_components {
+        class_name : "CollisionCheckerComponent"
+        config {
+            name: "safety_collision_checker"
+            interval: 200  # in milliseconds
+            config_file_path: "/apollo/modules/safety_manager/checker/collision_checker/conf/collision_checker_conf.pb.txt"
+            flag_file_path: "/apollo/modules/safety_manager/checker/collision_checker/conf/collision_checker_gflags.conf"
+        }
+    }
+}
+
+# control checker
+#module_config {
+#    module_library : "modules/safety_manager/checker/control_checker/libsafety_control_checker_component.so"
+#    timer_components {
+#        class_name : "ControlCheckerComponent"
+#        config {
+#            name: "safety_control_checker"
+#            interval: 100  # in milliseconds
+#            config_file_path: "/apollo/modules/safety_manager/checker/control_checker/conf/control_checker_conf.pb.txt"
+#            flag_file_path: "/apollo/modules/safety_manager/checker/control_checker/conf/control_checker_gflags.conf"
+#        }
+#    }
+#}
+
+# latency checker
+module_config {
+    module_library : "modules/safety_manager/checker/latency_checker/libsafety_latency_checker_component.so"
+    components {
+        class_name : "LatencyCheckerComponent"
+        config {
+            name: "safety_latency_checker"
+            config_file_path: "/apollo/modules/safety_manager/checker/latency_checker/conf/latency_checker_conf.pb.txt"
+            flag_file_path: "/apollo/modules/safety_manager/checker/latency_checker/conf/latency_checker_gflags.conf"
+            readers: [
+                {
+                    channel: "/apollo/statistics/latency"
+                    qos_profile: {
+                        depth : 1
+                    }
+                }
+            ]
+        }
+    }
+}
+
+# localization checker
+module_config {
+    module_library : "modules/safety_manager/checker/localization_checker/libsafety_localization_checker_component.so"
+    timer_components {
+        class_name : "LocalizationCheckerComponent"
+        config {
+            name: "safety_localization_checker"
+            interval: 200  # in milliseconds
+            flag_file_path: "/apollo/modules/safety_manager/checker/localization_checker/conf/localization_checker_gflags.conf"
+        }
+    }
+}
+
+# localization shake checker
+module_config {
+    module_library : "modules/safety_manager/checker/localization_shake_checker/libsafety_localization_shake_checker_component.so"
+    components {
+        class_name : "LocalizationShakeCheckerComponent"
+        config {
+            name: "safety_localization_shake_checker"
+            flag_file_path: "/apollo/modules/safety_manager/checker/localization_shake_checker/conf/localization_shake_checker_gflags.conf"
+            readers: [
+                {
+                    channel: "/apollo/localization/pose"
+                },
+                {
+                    channel: "/apollo/canbus/chassis"
+                }
+            ]
+        }
+    }
+}
+
+# process checker
+module_config {
+    module_library : "modules/safety_manager/checker/process_checker/libsafety_process_checker_component.so"
+    timer_components {
+        class_name : "ProcessCheckerComponent"
+        config {
+            name: "safety_process_checker"
+            interval: 205  # in milliseconds
+            config_file_path: "/apollo/modules/safety_manager/checker/process_checker/conf/process_checker_conf.pb.txt"
+            flag_file_path: "/apollo/modules/safety_manager/checker/process_checker/conf/process_checker_gflags.conf"
+        }
+    }
+}
+
+# resource checker
+module_config {
+    module_library : "modules/safety_manager/checker/resource_checker/libsafety_resource_checker_component.so"
+    components {
+        class_name : "ResourceCheckerComponent"
+        config {
+            name: "safety_resource_checker"
+            config_file_path: "/apollo/modules/safety_manager/checker/resource_checker/conf/resource_checker_conf.pb.txt"
+            flag_file_path: "/apollo/modules/safety_manager/checker/resource_checker/conf/resource_checker_gflags.conf"
+            readers: [
+                {
+                    channel: "/apollo/statistics/resources"
+                    qos_profile: {
+                        depth : 1
+                    }
+                }
+            ]
+        }
+    }
+}
+
+# swing checker
+module_config {
+    module_library : "modules/safety_manager/checker/swing_checker/libsafety_swing_checker_component.so"
+    timer_components {
+        class_name : "SwingCheckerComponent"
+        config {
+            name: "safety_swing_checker"
+            flag_file_path: "/apollo/modules/safety_manager/checker/swing_checker/conf/swing_checker_gflags.conf"
+            interval: 1000 # in milliseconds
+        }
+    }
+}

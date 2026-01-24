@@ -1,5 +1,2 @@
-layout:  {
-    type: "MapEditor"
-}
 operations: None
 default_operation: None

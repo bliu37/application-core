@@ -1,0 +1,36 @@
+<cyber>
+    <desc>Apollo models serialize launch</desc>
+    <version>1.0.0</version>
+    <module>
+        <name>semantics</name>
+        <dag_conf>/apollo/modules/perception/pointcloud_semantics/dag/pointcloud_semantic.dag</dag_conf>
+        <process_name>semantics</process_name>
+        <version>1.0.0</version>
+    </module>
+    <module>
+        <name>motion</name>
+        <dag_conf>/apollo/modules/perception/pointcloud_motion/dag/pointcloud_motion.dag</dag_conf>
+        <process_name>motion</process_name>
+        <version>1.0.0</version>
+    </module>
+    <module>
+        <name>cpdet</name>
+        <dag_conf>/apollo/modules/perception/lidar_cpdet_detection/dag/lidar_detection.dag</dag_conf>
+        <process_name>cpdet</process_name>
+        <version>1.0.0</version>
+    </module>
+    <module>
+        <name>traffic_detection</name>
+        <dag_conf>/apollo/modules/perception/traffic_light_detection/dag/traffic_light_detection_yolox.dag</dag_conf>
+        <process_name>traffic_detection</process_name>
+        <version>1.0.0</version>
+    </module>
+    <module>
+        <name>traffic_recognition</name>
+        <dag_conf>/apollo/modules/perception/traffic_light_recognition/dag/traffic_light_recognition.dag</dag_conf>
+        <process_name>traffic_recognition</process_name>
+        <version>1.0.0</version>
+    </module>
+</cyber>
+
+

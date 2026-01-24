@@ -1,0 +1,4 @@
+downsample_voxel_size_x: 0.09
+downsample_voxel_size_y: 0.09
+downsample_voxel_size_z: 0.09
+downsample_use_centroid: true

@@ -1,0 +1,62 @@
+# cpu usage rate threshold, cpu temperature threshold.
+# optional level: warning, error
+cpu {
+    usage_code: 1004001
+    usage_warning: 75
+    usage_error: 80
+    temperature_code: 1005001
+    temperature_warning: 75
+    temperature_error: 85
+}
+
+# gpu usage rate threshold, gpu temperature threshold.
+# optional level: warning, error
+# gpu {
+#   usage_code: 1004002
+#   usage_warning: 80
+#   usage_error: 90
+#   temperature_code: 1005002
+#   temperature_warning: 75
+#   temperature_error: 90
+# }
+
+# memory usage rate threshold, memory used in MB, memory available in MB
+# optional level: warning, error
+memory {
+   usage_code: 1004003
+   usage_warning: 80
+   usage_error: 90
+#    used_code: 1004004
+#    used_warning: 20000
+#    used_error: 30000
+
+   available_code: 1004005
+   available_warning: 3000
+   available_error: 2000
+}
+
+# disk name, disk device name,
+# disk usage rate threshold, load rate threshold,
+# disk used in in GB, disk available in GB,
+# optional level: warning, error
+disk {
+   name: "DisK"
+   device: "nvme0n1p1"
+   # disk usage rate threshold
+   usage_code: 1004006
+   usage_warning: 80
+   usage_error: 90
+
+#   used_code: 1004007
+#   used_warning: 400
+#   used_error: 500
+
+#   available_code: 1004008
+#   available_warning: 50
+#   available_error: 10
+
+#   # load rate threshold
+#   load_code: 1004009
+#   load_warning: 10
+#   load_error: 20
+}

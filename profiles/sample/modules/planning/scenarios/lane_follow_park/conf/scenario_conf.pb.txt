@@ -1,0 +1,2 @@
+stable_block_count: 5
+passby_min_gap: 1.2

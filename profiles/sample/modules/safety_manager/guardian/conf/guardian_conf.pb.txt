@@ -1,0 +1,18 @@
+guardian_enable: true
+
+# Emergency stop percentage
+# Default: 50
+#guardian_cmd_emergency_stop_percentage: 50
+
+# Emergency stop acceleration
+# Default: -4.0
+#guardian_cmd_emergency_stop_acceleration: -4.0
+
+
+# Comfortable stop percentage
+# Default: -2.0
+#guardian_cmd_soft_stop_percentage: 25
+
+# Comfortable stop acceleration
+# Default: -2.0
+#guardian_cmd_soft_stop_percentage: -2.0

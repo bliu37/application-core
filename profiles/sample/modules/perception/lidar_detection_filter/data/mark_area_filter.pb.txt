@@ -1,0 +1,29 @@
+area {
+  id: "area_1"
+  boundary {
+    point {
+      x: 0.0
+      y: 0.0
+      z: 0.0
+    }
+    point {
+      x: 0.0
+      y: 0.0
+      z: 0.0
+    }
+    point {
+      x: 0.0
+      y: 0.0
+      z: 0.0
+    }
+    point {
+      x: 0.0
+      y: 0.0
+      z: 0.0
+    }
+  }
+  isuse: false
+  filter_type: 0
+  filter_foreground_type: "vehicle"
+}
+filter_ratio: 30.0
