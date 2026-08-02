@@ -1,0 +1,10 @@
+module_config {
+    module_library: "modules/tools/yunle_dreamview_bridge/libyunle_dreamview_bridge_component.so"
+    timer_components {
+        class_name: "YunleLocalizationTimeBridge"
+        config {
+            name: "yunle_localization_time_bridge"
+            interval: 20
+        }
+    }
+}

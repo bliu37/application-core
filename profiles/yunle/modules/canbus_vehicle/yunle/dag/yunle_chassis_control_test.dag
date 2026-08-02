@@ -1,0 +1,11 @@
+module_config {
+    module_library: "modules/canbus_vehicle/yunle/libyunle_chassis_receiver_component.so"
+    timer_components {
+        class_name: "YunleChassisReceiverComponent"
+        config {
+            name: "yunle_chassis_control_test"
+            config_file_path: "/apollo/modules/canbus_vehicle/yunle/conf/yunle_chassis_control_test_conf.pb.txt"
+            interval: 10
+        }
+    }
+}

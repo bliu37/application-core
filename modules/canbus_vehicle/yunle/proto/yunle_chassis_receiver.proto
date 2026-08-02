@@ -1,0 +1,128 @@
+syntax = "proto2";
+
+package apollo.canbus.yunle;
+
+// Configuration for the Yunle chassis feedback component. Control transmission
+// is compiled in but remains disabled unless enable_control_send is explicitly
+// set in a vehicle Profile.
+message YunleChassisReceiverConfig {
+  optional string local_ip = 1 [default = "192.168.1.102"];
+  optional uint32 local_port = 2 [default = 8002];
+  optional string remote_ip = 3 [default = "192.168.1.10"];
+  optional uint32 remote_port = 4 [default = 4002];
+
+  optional string chassis_topic = 5 [default = "/apollo/canbus/chassis"];
+  optional string detail_topic = 6
+      [default = "/apollo/canbus/yunle_chassis_detail"];
+
+  // The 0x51 steering magnitude ranges from 0 to 120. This is not the
+  // physical road-wheel angle; it is the denominator used by the original
+  // Yunle integration when producing Apollo steering_percentage.
+  optional double max_steering_magnitude = 7 [default = 120.0];
+  optional double wheel_radius_m = 8 [default = 0.133];
+
+  optional uint32 feedback_timeout_ms = 9 [default = 200];
+  optional uint32 bms_timeout_ms = 10 [default = 2500];
+  optional uint32 max_datagrams_per_cycle = 11 [default = 512];
+
+  // Some Yunle VCU variants define front-wheel RPM fields in 0x168 but do
+  // not populate them. Keep the generic default enabled; a vehicle Profile
+  // can disable the two front Apollo WheelSpeed values while the detail topic
+  // continues to expose the raw RPM fields.
+  optional bool front_wheel_speed_valid = 12 [default = true];
+
+  optional string control_topic = 13 [default = "/apollo/control"];
+  optional bool enable_control_send = 14 [default = false];
+
+  // Upper flag bits used by the ETH-CAN adapter. The encoder always forces
+  // the lower DLC nibble to 8. The Apollo 10 reference sender used 0x08.
+  optional uint32 control_info_byte = 15 [default = 8];
+  optional uint32 control_command_timeout_ms = 16 [default = 200];
+  optional double maximum_control_speed_kph = 17 [default = 0.3];
+  optional double maximum_control_steering_percentage = 18 [default = 10.0];
+  optional uint32 failsafe_send_ms = 19 [default = 500];
+  optional bool require_drive_mode_switch = 20 [default = true];
+
+  // Commissioning-only: allow /apollo/canbus/chassis to report AUTO when the
+  // chassis feedback itself reports autonomous mode. The default remains false
+  // so preview/receive-only startup cannot accidentally engage Apollo Control.
+  optional bool report_auto_driving_mode = 21 [default = false];
+}
+
+// A separate detail type is used so that it cannot conflict with Apollo's
+// vehicle-specific /apollo/canbus/chassis_detail message types.
+message YunleChassisDetail {
+  optional double timestamp_sec = 1;
+  optional uint64 sequence_num = 2;
+  optional bool communication_ok = 3;
+  optional uint64 received_frame_count = 4;
+  optional uint64 recognized_frame_count = 5;
+  optional uint64 invalid_packet_count = 6;
+  optional uint64 unexpected_peer_count = 7;
+  optional uint32 last_info_byte = 8;
+
+  optional uint32 ccu_age_ms = 10;
+  optional uint32 wheel_speed_age_ms = 11;
+  optional uint32 steering_age_ms = 12;
+  optional uint32 warning_age_ms = 13;
+  optional uint32 target_speed_age_ms = 14;
+  optional uint32 bms_age_ms = 15;
+
+  optional uint32 shift_status = 20;
+  optional bool parking_status = 21;
+  optional uint32 ignition_status = 22;
+  optional uint32 drive_mode_raw = 23;
+  optional bool drive_mode_shift_button = 24;
+  optional bool steering_direction_right = 25;
+  optional double steering_magnitude = 26;
+  optional double vehicle_speed_kph = 27;
+  optional bool remote_brake = 28;
+  optional bool emergency_brake = 29;
+  optional bool scu_brake = 30;
+
+  optional double front_left_rpm = 40;
+  optional double front_right_rpm = 41;
+  optional double rear_left_rpm = 42;
+  optional double rear_right_rpm = 43;
+
+  optional double front_steering_angle_deg = 50;
+  optional double rear_steering_angle_deg = 51;
+
+  optional double hardware_target_speed_kph = 60;
+  optional double scu_target_speed_kph = 61;
+  optional double vehicle_target_speed_kph = 62;
+  optional double real_speed_rpm = 63;
+
+  optional double battery_voltage_v = 70;
+  optional double battery_current_a = 71;
+  optional uint32 battery_soc_percentage = 72;
+
+  // Unsigned 3-bit severity values from JD03 V4.5, in bit order
+  // 0, 3, ..., 36. Values 0..3 mean normal, prompt, derate, emergency brake.
+  optional uint32 bms_charge_current_warning = 80;
+  optional uint32 bms_discharge_current_warning = 81;
+  optional uint32 bms_soc_warning = 82;
+  optional uint32 bms_temperature_warning = 83;
+  optional uint32 mcu_current_warning = 84;
+  optional uint32 mcu_disconnect_warning = 85;
+  optional uint32 mcu_motor_warning = 86;
+  optional uint32 mcu_speed_warning = 87;
+  optional uint32 mcu_temperature_warning = 88;
+  optional uint32 max_warning_level = 89;
+  optional uint32 mcu_voltage_warning = 90;
+  optional uint32 steering_disconnect_warning = 91;
+  optional uint32 steering_lock_warning = 92;
+  optional uint32 steering_unstoppable_warning = 93;
+
+  optional bool control_send_enabled = 100;
+  optional bool control_command_received = 101;
+  optional bool control_command_fresh = 102;
+  optional bool control_interlocks_ok = 103;
+  optional bool control_failsafe_active = 104;
+  optional uint64 sent_control_frame_count = 105;
+  optional uint64 control_send_error_count = 106;
+  optional double commanded_target_speed_kph = 107;
+  optional double commanded_steering_percentage = 108;
+  optional uint32 commanded_gear = 109;
+  optional string control_block_reason = 110;
+}

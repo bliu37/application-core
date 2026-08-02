@@ -1,0 +1,35 @@
+local_ip: "192.168.1.102"
+local_port: 8002
+remote_ip: "192.168.1.10"
+remote_port: 4002
+
+chassis_topic: "/apollo/canbus/chassis"
+detail_topic: "/apollo/canbus/yunle_chassis_detail"
+
+# JD03 / Xiaoyu 800 specification: 266 mm tyre diameter.
+wheel_radius_m: 0.133
+
+# This vehicle's captured 0x168 frames keep both front-wheel RPM fields at
+# zero while moving. Preserve those raw fields on the detail topic, but do not
+# advertise them as valid Apollo WheelSpeed measurements.
+front_wheel_speed_valid: false
+
+# 0x51 reports a 0..120 steering magnitude. This is used only to produce
+# steering_percentage; physical front/rear angles are published in detail.
+max_steering_magnitude: 120.0
+
+feedback_timeout_ms: 200
+bms_timeout_ms: 2500
+max_datagrams_per_cycle: 512
+
+# The 0x121 transmission path is compiled for later low-speed commissioning,
+# but remains hard-disabled until the ETH-CAN Info byte and link-loss recovery
+# have been verified on the stationary vehicle.
+control_topic: "/apollo/control"
+enable_control_send: false
+control_info_byte: 8
+control_command_timeout_ms: 200
+maximum_control_speed_kph: 0.3
+maximum_control_steering_percentage: 10.0
+failsafe_send_ms: 500
+require_drive_mode_switch: true

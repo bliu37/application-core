@@ -1,0 +1,7 @@
+<cyber>
+    <module>
+        <name>yunle_chassis_apollo_control_test</name>
+        <dag_conf>/apollo/modules/canbus_vehicle/yunle/dag/yunle_chassis_apollo_control_test.dag</dag_conf>
+        <process_name></process_name>
+    </module>
+</cyber>

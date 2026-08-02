@@ -1,0 +1,56 @@
+cyber_modules {
+  key: "LslidarC16V4"
+  value {
+    dag_files: "/apollo/modules/drivers/lidar/lslidar/dag/lslidar.dag"
+    process_group: "lslidar"
+    required_for_safety: false
+  }
+}
+
+cyber_modules {
+  key: "StaticTf"
+  value {
+    dag_files: "/apollo/modules/transform/dag/static_transform.dag"
+    process_group: "static_transform"
+    required_for_safety: false
+  }
+}
+
+cyber_modules {
+  key: "Gnss"
+  value {
+    dag_files: "/apollo/modules/drivers/gnss/dag/gnss.dag"
+    process_group: "gnss"
+    required_for_safety: false
+  }
+}
+
+cyber_modules {
+  key: "RtkLocalization"
+  value {
+    dag_files: "/apollo/modules/localization/dag/dag_streaming_rtk_localization.dag"
+    process_group: "localization"
+    required_for_safety: false
+  }
+}
+
+cyber_modules {
+  key: "YunleApolloControlTest"
+  value {
+    dag_files: "/apollo/modules/canbus_vehicle/yunle/dag/yunle_chassis_apollo_control_test.dag"
+    process_group: "yunle_chassis_apollo_control_test"
+    required_for_safety: false
+  }
+}
+
+cyber_modules {
+  key: "Control"
+  value {
+    dag_files: "/apollo/modules/control/control_component/dag/control.dag"
+    process_group: "control"
+    required_for_safety: false
+  }
+}
+
+operations: Record
+default_operation: Record

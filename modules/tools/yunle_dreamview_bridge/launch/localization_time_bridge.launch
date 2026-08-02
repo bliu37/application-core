@@ -1,0 +1,7 @@
+<cyber>
+    <module>
+        <name>yunle_localization_time_bridge</name>
+        <dag_conf>/apollo/modules/tools/yunle_dreamview_bridge/dag/localization_time_bridge.dag</dag_conf>
+        <process_name></process_name>
+    </module>
+</cyber>

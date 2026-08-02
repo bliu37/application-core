@@ -73,6 +73,35 @@ docs/demo_guide/*.record
 # buildtool cache and others
 dev/
 
+# Local Apollo runtime output
+/dumps/
+/log/
+
+# Local reference documents; intentionally not part of the source repository
+/helpdocs/
+
+# AEM active-profile state (the profile definition itself is tracked)
+/profiles/current
+
+# Local agent/session metadata
+/.agents/
+/.codex/
+
+# Root-level local archives and recordings
+/*.zip
+/*.tar
+/*.tar.gz
+/*.tgz
+/*.7z
+/*.rar
+/*.bag
+/*.record
+
+# Python/test runtime caches
+__pycache__/
+.pytest_cache/
+.coverage
+
 # bazel cache and others
 .cache/
 .apollo.bazelrc

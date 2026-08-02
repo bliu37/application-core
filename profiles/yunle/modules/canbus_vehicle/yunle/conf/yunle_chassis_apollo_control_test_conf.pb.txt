@@ -1,0 +1,28 @@
+# Commissioning-only configuration for testing the normal Apollo ControlCommand
+# topic. Do not use this file for unattended normal startup.
+local_ip: "192.168.1.102"
+local_port: 8002
+remote_ip: "192.168.1.10"
+remote_port: 4002
+
+chassis_topic: "/apollo/canbus/chassis"
+detail_topic: "/apollo/canbus/yunle_chassis_detail"
+
+wheel_radius_m: 0.133
+front_wheel_speed_valid: false
+max_steering_magnitude: 120.0
+
+feedback_timeout_ms: 200
+bms_timeout_ms: 2500
+max_datagrams_per_cycle: 512
+
+# Apollo control-chain commissioning path.
+control_topic: "/apollo/control"
+enable_control_send: true
+control_info_byte: 8
+control_command_timeout_ms: 200
+maximum_control_speed_kph: 1.5
+maximum_control_steering_percentage: 90.0
+failsafe_send_ms: 500
+require_drive_mode_switch: true
+report_auto_driving_mode: true

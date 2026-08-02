@@ -1,0 +1,29 @@
+data {
+    format: HUACE_TEXT
+    serial {
+        # Stable device path for the CGI-230 Prolific USB-RS232 adapter.
+        device: "/dev/serial/by-id/usb-Prolific_Technology_Inc._USB-Serial_Controller_DWCRm153609-if00-port0"
+        baud_rate: 460800
+    }
+}
+
+# The CGI-230 currently persists HCINSPVATZCB binary output. Change only the
+# running COM1 session to the GPCHC text stream understood by Apollo 11, while
+# preserving outputs configured on COM2, CAN, and Ethernet. These commands do
+# not contain saveconfig, so the receiver's persistent settings are unchanged.
+login_commands: "unlog com1 HCINSPVATZCB\r\n"
+login_commands: "unlog com1 GPCHC\r\n"
+login_commands: "log com1 GPCHC ontime 0.01\r\n"
+
+rtk_solution_type: RTK_RECEIVER_SOLUTION
+imu_type: CPT_XW5651
+proj4_text: "+proj=utm +zone=50 +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs"
+
+tf {
+    frame_id: "world"
+    child_frame_id: "imu"
+    enable: true
+}
+
+gpsbin_folder: "/apollo/data/gpsbin"
+use_gnss_time: true

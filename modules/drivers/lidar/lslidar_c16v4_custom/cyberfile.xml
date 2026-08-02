@@ -1,0 +1,16 @@
+<package format="2">
+  <name>drivers-lslidar-c16v4-custom</name>
+  <version>local</version>
+  <description>LS-C16 V4 component fix for Apollo 11 package mode.</description>
+
+  <maintainer email="apollo-support@baidu.com">Apollo</maintainer>
+  <license>Apache License 2.0</license>
+
+  <depend type="binary" repo_name="cyber">cyber</depend>
+  <depend type="binary" repo_name="common" lib_names="common">common</depend>
+  <depend type="binary" repo_name="common-msgs" lib_names="common-msgs">common-msgs</depend>
+  <depend type="binary" repo_name="drivers-lidar">drivers-lidar</depend>
+
+  <type>module</type>
+  <src_path>//modules/drivers/lidar/lslidar_c16v4_custom</src_path>
+</package>
