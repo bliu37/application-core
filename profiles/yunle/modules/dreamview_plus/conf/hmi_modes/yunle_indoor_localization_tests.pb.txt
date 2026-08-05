@@ -1,0 +1,118 @@
+cyber_modules {
+  key: "LslidarC16V4"
+  value {
+    dag_files: "/apollo/modules/drivers/lidar/lslidar/dag/lslidar.dag"
+    process_group: "lslidar"
+    required_for_safety: false
+  }
+}
+
+cyber_modules {
+  key: "GnssImu"
+  value {
+    dag_files: "/apollo/modules/drivers/gnss/dag/yunle_indoor_gnss.dag"
+    process_group: "gnss"
+    required_for_safety: false
+  }
+}
+
+cyber_modules {
+  key: "IndoorTestTf"
+  value {
+    dag_files: "/apollo/modules/transform/dag/yunle_indoor_test_static_transform.dag"
+    process_group: "yunle_indoor_test_static_transform"
+    required_for_safety: false
+  }
+}
+
+cyber_modules {
+  key: "IndoorLiorfOdometry"
+  value {
+    dag_files: "/apollo/modules/loam_velodyne_indoor/dag/laser_multiscan_registration.dag"
+    dag_files: "/apollo/modules/loam_velodyne_indoor/dag/laser_odometry.dag"
+    dag_files: "/apollo/modules/loam_velodyne_indoor/dag/localization_mapping.dag"
+    process_group: "yunle_indoor_liorf_odometry"
+    required_for_safety: false
+  }
+}
+
+cyber_modules {
+  key: "IndoorNdtLocalization"
+  value {
+    dag_files: "/apollo/modules/tools/yunle_dreamview_bridge/dag/indoor_ndt_input_bridge.dag"
+    dag_files: "/apollo/modules/localization/dag/yunle_indoor_ndt_localization.dag"
+    process_group: "yunle_indoor_ndt_localization"
+    required_for_safety: false
+  }
+}
+
+cyber_modules {
+  key: "IndoorNdtLocalizationFloatSafe"
+  value {
+    dag_files: "/apollo/modules/tools/yunle_dreamview_bridge/dag/indoor_ndt_float_safe_input_bridge.dag"
+    dag_files: "/apollo/modules/localization/dag/yunle_indoor_ndt_localization_float_safe.dag"
+    process_group: "yunle_indoor_ndt_localization_float_safe"
+    required_for_safety: false
+  }
+}
+
+cyber_modules {
+  key: "IndoorNdtLocalizationFloatSafeMinus90"
+  value {
+    dag_files: "/apollo/modules/tools/yunle_dreamview_bridge/dag/indoor_ndt_float_safe_minus_90_input_bridge.dag"
+    dag_files: "/apollo/modules/localization/dag/yunle_indoor_ndt_localization_float_safe_minus_90.dag"
+    process_group: "yunle_indoor_ndt_localization_float_safe_minus_90"
+    required_for_safety: false
+  }
+}
+
+cyber_modules {
+  key: "IndoorNdtLocalizationFloatSafeMinus90Map03"
+  value {
+    dag_files: "/apollo/modules/tools/yunle_dreamview_bridge/dag/indoor_ndt_float_safe_minus_90_map03_input_bridge.dag"
+    dag_files: "/apollo/modules/localization/dag/yunle_indoor_ndt_localization_float_safe_minus_90_map03.dag"
+    process_group: "yunle_indoor_ndt_localization_float_safe_minus_90_map03"
+    required_for_safety: false
+  }
+}
+
+cyber_modules {
+  key: "IndoorNdtLocalizationMap03MeasuredExtrinsic"
+  value {
+    dag_files: "/apollo/modules/tools/yunle_dreamview_bridge/dag/indoor_ndt_float_safe_minus_90_map03_measured_input_bridge.dag"
+    dag_files: "/apollo/modules/localization/dag/yunle_indoor_ndt_localization_float_safe_minus_90_map03_measured.dag"
+    process_group: "yunle_indoor_ndt_localization_map03_measured_extrinsic"
+    required_for_safety: false
+  }
+}
+
+cyber_modules {
+  key: "IndoorNdtLocalizationMap03MeasuredZStable"
+  value {
+    dag_files: "/apollo/modules/tools/yunle_dreamview_bridge/dag/indoor_ndt_float_safe_minus_90_map03_measured_zstable_tools.dag"
+    dag_files: "/apollo/modules/localization/dag/yunle_indoor_ndt_localization_float_safe_minus_90_map03_measured_raw.dag"
+    process_group: "yunle_indoor_ndt_localization_map03_measured_z_stable"
+    required_for_safety: false
+  }
+}
+
+cyber_modules {
+  key: "IndoorPclOmpNdtLocalizationMap03MeasuredZStable"
+  value {
+    dag_files: "/apollo/modules/tools/yunle_dreamview_bridge/dag/indoor_pclomp_ndt_map03_measured_zstable_tools.dag"
+    process_group: "yunle_indoor_pclomp_ndt_localization_map03_measured_z_stable"
+    required_for_safety: false
+  }
+}
+
+cyber_modules {
+  key: "YunleChassisPreview"
+  value {
+    dag_files: "/apollo/modules/canbus_vehicle/yunle/dag/yunle_chassis_receiver.dag"
+    process_group: "yunle_chassis_receiver"
+    required_for_safety: false
+  }
+}
+
+operations: Record
+default_operation: Record

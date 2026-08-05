@@ -70,6 +70,9 @@ def print_detail(label, detail):
     if detail is None:
         print("{}: no Yunle chassis detail received".format(label))
         return
+    pad_start_required = getattr(detail, "control_pad_start_required", False)
+    pad_started = getattr(detail, "control_pad_started", False)
+    last_pad_action = getattr(detail, "last_control_pad_action", 0)
     print(
         ("{}: communication_ok={} shift={} parking={} ignition={} "
          "auto_switch={} drive_mode={} speed_kph={} warning={} "
@@ -78,7 +81,9 @@ def print_detail(label, detail):
          "hardware_target_kph={} scu_target_kph={} vehicle_target_kph={} "
          "real_rpm={} rear_rpm=({},{}) cmd_target_kph={} cmd_steering={} "
          "cmd_gear={} enabled={} received={} fresh={} "
-         "interlocks={} failsafe={} sent={} errors={} reason={!r}").format(
+         "interlocks={} failsafe={} sent={} errors={} "
+         "pad_start_required={} pad_started={} last_pad_action={} "
+         "reason={!r}").format(
              label, detail.communication_ok, detail.shift_status,
              detail.parking_status, detail.ignition_status,
              detail.drive_mode_shift_button, detail.drive_mode_raw,
@@ -97,6 +102,9 @@ def print_detail(label, detail):
              detail.control_interlocks_ok, detail.control_failsafe_active,
              detail.sent_control_frame_count,
              detail.control_send_error_count,
+             pad_start_required,
+             pad_started,
+             last_pad_action,
              detail.control_block_reason))
 
 

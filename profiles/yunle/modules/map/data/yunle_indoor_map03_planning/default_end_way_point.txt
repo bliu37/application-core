@@ -1,0 +1,11 @@
+landmark {
+  name: "yunle_lane_1"
+  waypoint {
+    id: "yunle_lane_1"
+    s: 15.000000
+    pose {
+      x: 10000.266571
+      y: 10008.570784
+    }
+  }
+}

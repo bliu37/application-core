@@ -1,0 +1,9 @@
+<cyber>
+  <module>
+    <name>yunle_indoor_slam_mapping</name>
+    <dag_conf>/apollo/modules/loam_velodyne_indoor/dag/laser_multiscan_registration.dag</dag_conf>
+    <dag_conf>/apollo/modules/loam_velodyne_indoor/dag/laser_odometry.dag</dag_conf>
+    <dag_conf>/apollo/modules/loam_velodyne_indoor/dag/localization_mapping.dag</dag_conf>
+    <process_name>yunle_indoor_slam_mapping</process_name>
+  </module>
+</cyber>

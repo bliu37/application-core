@@ -1,0 +1,13 @@
+# Indoor-only CGI-230 input.  Its dedicated configuration preserves the IMU
+# topics while disabling the GNSS-derived world -> imu TF broadcaster.
+module_config {
+    module_library: "modules/drivers/gnss/libgnss_component.so"
+
+    components {
+        class_name: "GnssDriverComponent"
+        config {
+            name: "yunle_indoor_gnss_imu"
+            config_file_path: "/apollo/modules/drivers/gnss/conf/yunle_indoor_gnss_conf.pb.txt"
+        }
+    }
+}

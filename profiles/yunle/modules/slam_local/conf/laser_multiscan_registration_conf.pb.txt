@@ -1,0 +1,63 @@
+# JD03 fixed-map indoor localization frontend. This is intentionally separate
+# from loam_velodyne_indoor mapping and must not run at the same time.
+
+pointCloudTopic: "/apollo/sensor/lslidar16v4/PointCloud2"
+imuTopic: "/apollo/sensor/gnss/corrected_imu"
+odomTopic: "/apollo/yunle/indoor/disabled/rtk_odometry"
+gpsTopic: "/apollo/yunle/indoor/disabled/gnss_best_pose"
+
+lidarFrame: "lslidar16v4"
+baselinkFrame: "lslidar16v4"
+odometryFrame: "odom"
+mapFrame: "map"
+imuframe: "imu"
+
+useImuHeadingInitialization: false
+useGpsElevation: false
+gpsCovThreshold: 2.0
+poseCovThreshold: 25.0
+
+savePCD: false
+savePCDDirectory: "/apollo_workspace/data/map_work/yunle_indoor/pcd/"
+
+sensor: "velodyne"
+N_SCAN: 16
+Horizon_SCAN: 2000
+downsampleRate: 1
+point_filter_num: 1
+lidarMinRange: 0.5
+lidarMaxRange: 100.0
+
+imuType: 0
+imuRate: 100.0
+imuAccNoise: 3.9939570888238808e-03
+imuGyrNoise: 1.5636343949698187e-03
+imuAccBiasN: 6.4356659353532566e-05
+imuGyrBiasN: 3.5640318696367613e-05
+imuGravity: 9.80511
+imuRPYWeight: 0.01
+mappingSurfLeafSize: 0.2
+
+z_tollerance: 1000
+rotation_tollerance: 1000
+numberOfCores: 4
+mappingProcessInterval: 0.05
+
+surroundingkeyframeAddingDistThreshold: 0.5
+surroundingkeyframeAddingAngleThreshold: 0.15
+surroundingKeyframeDensity: 1.0
+surroundingKeyframeSearchRadius: 30.0
+surroundingKeyframeMapLeafSize: 0.2
+
+loopClosureEnableFlag: true
+loopClosureFrequency: 1.0
+surroundingKeyframeSize: 50
+historyKeyframeSearchRadius: 8.0
+historyKeyframeSearchTimeDiff: 20.0
+historyKeyframeSearchNum: 25
+loopClosureICPSurfLeafSize: 0.2
+historyKeyframeFitnessScore: 0.3
+
+globalMapVisualizationSearchRadius: 200.0
+globalMapVisualizationPoseDensity: 2.0
+globalMapVisualizationLeafSize: 0.2

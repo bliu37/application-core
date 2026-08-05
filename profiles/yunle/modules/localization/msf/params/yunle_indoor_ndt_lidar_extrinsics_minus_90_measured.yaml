@@ -1,0 +1,17 @@
+# A/B TEST: tape-measured localization/IMU-to-lidar rigid transform.
+# The localization frame is defined at the IMU origin with the same axes.
+# Parent CGI-230 axes: X left, Y rear, Z up.
+# Child LS-C16 V4 axes: X forward, Y left, Z up.
+child_frame_id: lslidar16v4
+transform:
+  translation:
+    x: 0.03
+    y: -0.33
+    z: 0.67
+  rotation:
+    x: 0.0
+    y: 0.0
+    z: -0.7071067811865476
+    w: 0.7071067811865476
+header:
+  frame_id: localization

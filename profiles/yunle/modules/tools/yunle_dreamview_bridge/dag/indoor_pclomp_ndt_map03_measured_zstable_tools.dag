@@ -1,0 +1,25 @@
+module_config {
+  module_library: "modules/tools/yunle_dreamview_bridge/libyunle_dreamview_bridge_component.so"
+  components {
+    class_name: "YunleIndoorNdtFloatSafeInputBridge"
+    config {
+      name: "yunle_indoor_pclomp_ndt_map03_measured_zstable_input_bridge"
+    }
+  }
+  components {
+    class_name: "YunleIndoorNdtPoseStabilizer"
+    config {
+      name: "yunle_indoor_pclomp_ndt_pose_stabilizer"
+    }
+  }
+}
+
+module_config {
+  module_library: "modules/tools/yunle_dreamview_bridge/libyunle_indoor_pclomp_ndt_localization_component.so"
+  components {
+    class_name: "YunleIndoorPclOmpNdtLocalizer"
+    config {
+      name: "yunle_indoor_pclomp_ndt_localization_map03_measured_zstable"
+    }
+  }
+}

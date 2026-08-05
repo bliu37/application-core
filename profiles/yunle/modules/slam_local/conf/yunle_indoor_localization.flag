@@ -1,0 +1,38 @@
+--flagfile=/apollo/modules/common/data/global_flagfile.txt
+
+# slam_local constructs each map filename as map_dir + pose_path + suffix.
+# Keep the root and map name separate; an absolute pose_path would otherwise
+# be appended to Apollo's currently selected HD-map directory.
+--map_dir=/apollo_workspace/data/map_work/yunle_indoor/
+--pose_path=jd03_indoor_20260803_01
+--zoneid=50
+
+--threeTracePath=/3D-Pose.txt
+--sixTracePath=/6D-Pose.txt
+--surfFilePath=/surfPointCloud.txt
+--offsetFile=/gnss-map-offset.txt
+--slam_pose_result=/slam_pose_result.bin
+
+--trajectory_slam=/apollo/data/yunle_indoor_localization_trajectory_slam.txt
+--trajectory_slam_local=/apollo/data/yunle_indoor_localization_trajectory_local.txt
+--trajectory_rtk=/apollo/data/yunle_indoor_localization_trajectory_rtk.txt
+
+# GNSS position is deliberately excluded from the indoor solution.
+--imu_gps_translation_x=0.0
+--imu_gps_translation_y=0.0
+--imu_gps_translation_z=0.0
+
+--enable_slam_debug_flag=false
+--local_map_downsize=true
+--mean_filter_window_size=20
+--icp_threshold_change_slam_to_rtk=0.15
+--downsize_interval_distance=4.0
+--nearestk_search_distance_threshold=2.0
+--nearestk_search_angle_threshold=0.05
+--icp_threshold_to_reinit_slam=10.0
+
+# The test map is small enough for CPU processing. Avoid making the first
+# reload test depend on CUDA availability or GPU memory state.
+--downsample_map_use_gpu=false
+--downsample_current_cloud_use_gpu=false
+--scan2map_use_gpu=false

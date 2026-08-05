@@ -1,0 +1,51 @@
+cyber_modules {
+  key: "LslidarC16V4"
+  value {
+    dag_files: "/apollo/modules/drivers/lidar/lslidar/dag/lslidar.dag"
+    process_group: "lslidar"
+    required_for_safety: false
+  }
+}
+
+cyber_modules {
+  key: "GnssImu"
+  value {
+    # Preserve the CGI-230 IMU topics, but do not publish its outdoor
+    # world -> imu pose into the indoor LIORF TF tree.
+    dag_files: "/apollo/modules/drivers/gnss/dag/yunle_indoor_gnss.dag"
+    process_group: "gnss"
+    required_for_safety: false
+  }
+}
+
+cyber_modules {
+  key: "IndoorTestTf"
+  value {
+    dag_files: "/apollo/modules/transform/dag/yunle_indoor_test_static_transform.dag"
+    process_group: "yunle_indoor_test_static_transform"
+    required_for_safety: false
+  }
+}
+
+cyber_modules {
+  key: "IndoorSlamMapping"
+  value {
+    dag_files: "/apollo/modules/loam_velodyne_indoor/dag/laser_multiscan_registration.dag"
+    dag_files: "/apollo/modules/loam_velodyne_indoor/dag/laser_odometry.dag"
+    dag_files: "/apollo/modules/loam_velodyne_indoor/dag/localization_mapping.dag"
+    process_group: "yunle_indoor_slam_mapping"
+    required_for_safety: false
+  }
+}
+
+cyber_modules {
+  key: "YunleChassisPreview"
+  value {
+    dag_files: "/apollo/modules/canbus_vehicle/yunle/dag/yunle_chassis_receiver.dag"
+    process_group: "yunle_chassis_receiver"
+    required_for_safety: false
+  }
+}
+
+operations: Record
+default_operation: Record

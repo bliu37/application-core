@@ -1,0 +1,15 @@
+child_frame_id: lslidar16v4
+transform:
+  translation:
+    x: 0.0
+    y: 0.0
+    z: 0.0
+  # Direct live-cloud/global.pcd comparison selects this rotation by a wide
+  # margin: LIORF map X <- Apollo lidar Y, map Y <- -Apollo lidar X.
+  rotation:
+    x: 0.0
+    y: 0.0
+    z: -0.7071067811865476
+    w: 0.7071067811865476
+header:
+  frame_id: localization

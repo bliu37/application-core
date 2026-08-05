@@ -1,0 +1,31 @@
+# CGI-230 input for the Yunle indoor LIORF mode.
+#
+# This keeps the raw 100 Hz IMU stream enabled, but deliberately suppresses
+# the GNSS driver's world -> imu transform.  The vehicle and its IMU move
+# indoors while the GNSS antenna may remain fixed outside, so that pose must
+# not enter the indoor TF tree.
+
+data {
+    format: HUACE_TEXT
+    serial {
+        device: "/dev/serial/by-id/usb-Prolific_Technology_Inc._USB-Serial_Controller_DWCRm153609-if00-port0"
+        baud_rate: 460800
+    }
+}
+
+login_commands: "unlog com1 HCINSPVATZCB\r\n"
+login_commands: "unlog com1 GPCHC\r\n"
+login_commands: "log com1 GPCHC ontime 0.01\r\n"
+
+rtk_solution_type: RTK_RECEIVER_SOLUTION
+imu_type: CPT_XW5651
+proj4_text: "+proj=utm +zone=50 +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs"
+
+tf {
+    frame_id: "world"
+    child_frame_id: "imu"
+    enable: false
+}
+
+gpsbin_folder: "/apollo/data/gpsbin"
+use_gnss_time: true

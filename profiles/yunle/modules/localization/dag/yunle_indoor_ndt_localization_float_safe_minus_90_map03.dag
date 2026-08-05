@@ -1,0 +1,19 @@
+module_config {
+  module_library: "modules/localization/ndt/libndt_localization_component.so"
+  components {
+    class_name: "NDTLocalizationComponent"
+    config {
+      name: "yunle_indoor_ndt_localization_float_safe_minus_90_map03"
+      flag_file_path: "/apollo/modules/localization/conf/yunle_indoor_ndt_localization_float_safe_minus_90_map03.conf"
+      readers: [
+        {
+          channel: "/apollo/yunle/indoor/ndt/odometry"
+          qos_profile: {
+            depth: 10
+          }
+          pending_queue_size: 50
+        }
+      ]
+    }
+  }
+}

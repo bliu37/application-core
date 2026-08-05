@@ -1,0 +1,21 @@
+header {
+  module_name: "routing"
+  sequence_num: 1
+  timestamp_sec: 0.0
+}
+waypoint {
+  id: "yunle_lane_1"
+  s: 0.500000
+  pose {
+    x: 9999.811705
+    y: 9994.077920
+  }
+}
+waypoint {
+  id: "yunle_lane_1"
+  s: 14.500000
+  pose {
+    x: 10000.250886
+    y: 10008.071030
+  }
+}

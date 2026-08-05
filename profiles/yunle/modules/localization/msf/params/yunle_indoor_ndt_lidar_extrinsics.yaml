@@ -1,0 +1,17 @@
+child_frame_id: lslidar16v4
+transform:
+  translation:
+    x: 0.0
+    y: 0.0
+    z: 0.0
+  # Apollo lidar axes are X forward, Y left and Z up. The bundled indoor
+  # LIORF map uses X right, Y forward and Z up, as confirmed by the measured
+  # JD03 motion. Rotate online lidar points +90 degrees about Z so NDT sees
+  # them in the same coordinate convention as the saved global map.
+  rotation:
+    x: 0.0
+    y: 0.0
+    z: 0.7071067811865476
+    w: 0.7071067811865476
+header:
+  frame_id: localization

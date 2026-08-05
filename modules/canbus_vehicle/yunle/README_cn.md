@@ -87,10 +87,28 @@ commanded_target_speed_kph
 commanded_steering_percentage
 commanded_gear
 control_block_reason
+control_pad_start_required
+control_pad_started
+last_control_pad_action
+planning_terminal_stop_received
+planning_terminal_stop_fresh
+terminal_stop_release_ready
+remote_release_active
+remote_release_frame_count
+planning_terminal_stop_reason
+terminal_stop_released_to_remote
 ```
 
 当前 Profile 下应看到 `control_send_enabled: false`、发送计数为 0，并显示
 `control send disabled by Profile`。不得仅为消除此提示而打开控制开关。
+Apollo Control 联调配置额外打开 `require_control_pad_start: true`：在
+Dreamview/Control 发送 `/apollo/control/pad` 的 `START` 之前，即使已经收到
+Routing 和 Planning 轨迹，Yunle 组件也不会向 SCU 转发 `0x121` 控制帧。
+该联调配置还打开 `release_to_remote_on_terminal_stop: true`：当
+`/apollo/planning` 明确报告 destination/reference-end/mission-complete，
+且车辆已经静止、ControlCommand 为零速时，组件等待 800 ms 后发送 500 ms 的
+remote/neutral 释放帧，并解除 Pad START gate，避免短路线到终点后 Apollo
+继续持有 AUTO 并周期性下发零速/刹车命令。
 
 ## 隔离的实车调试入口
 

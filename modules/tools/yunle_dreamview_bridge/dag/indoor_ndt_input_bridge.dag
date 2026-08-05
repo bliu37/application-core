@@ -1,0 +1,9 @@
+module_config {
+  module_library: "modules/tools/yunle_dreamview_bridge/libyunle_dreamview_bridge_component.so"
+  components {
+    class_name: "YunleIndoorNdtInputBridge"
+    config {
+      name: "yunle_indoor_ndt_input_bridge"
+    }
+  }
+}

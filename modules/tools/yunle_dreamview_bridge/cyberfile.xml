@@ -2,7 +2,7 @@
   <name>yunle-dreamview-bridge</name>
   <version>local</version>
   <description>
-    Preview-only localization timestamp bridge for Dreamview Plus point cloud.
+    Yunle Dreamview preview and stationary indoor-test support components.
   </description>
 
   <maintainer email="apollo-support@baidu.com">Apollo</maintainer>
@@ -11,6 +11,7 @@
   <depend type="binary" repo_name="cyber">cyber</depend>
   <depend type="binary" repo_name="common" lib_names="common">common</depend>
   <depend type="binary" repo_name="common-msgs" lib_names="common-msgs">common-msgs</depend>
+  <depend type="binary" repo_name="loam-velodyne-indoor">loam-velodyne-indoor</depend>
 
   <type>module</type>
   <src_path>//modules/tools/yunle_dreamview_bridge</src_path>

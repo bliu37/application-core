@@ -1,0 +1,12 @@
+module_config {
+    module_library: "modules/tools/yunle_dreamview_bridge/libyunle_dreamview_bridge_component.so"
+    timer_components {
+        class_name: "YunleIndoorTestTfPublisher"
+        config {
+            name: "yunle_indoor_test_static_transform"
+            # Publish a fixed transform on /tf with a current timestamp. This
+            # avoids the unreliable one-shot /tf_static delivery in LIORF.
+            interval: 500
+        }
+    }
+}

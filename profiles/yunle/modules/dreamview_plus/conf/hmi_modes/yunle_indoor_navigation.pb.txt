@@ -1,0 +1,115 @@
+cyber_modules {
+  key: "LslidarC16V4"
+  value {
+    dag_files: "/apollo/modules/drivers/lidar/lslidar/dag/lslidar.dag"
+    process_group: "lslidar"
+    required_for_safety: false
+  }
+}
+
+cyber_modules {
+  key: "GnssImu"
+  value {
+    dag_files: "/apollo/modules/drivers/gnss/dag/yunle_indoor_gnss.dag"
+    process_group: "gnss"
+    required_for_safety: false
+  }
+}
+
+cyber_modules {
+  key: "IndoorTestTf"
+  value {
+    dag_files: "/apollo/modules/transform/dag/yunle_indoor_test_static_transform.dag"
+    process_group: "yunle_indoor_test_static_transform"
+    required_for_safety: false
+  }
+}
+
+cyber_modules {
+  key: "IndoorLiorfOdometry"
+  value {
+    dag_files: "/apollo/modules/loam_velodyne_indoor/dag/laser_multiscan_registration.dag"
+    dag_files: "/apollo/modules/loam_velodyne_indoor/dag/laser_odometry.dag"
+    dag_files: "/apollo/modules/loam_velodyne_indoor/dag/localization_mapping.dag"
+    process_group: "yunle_indoor_liorf_odometry"
+    required_for_safety: false
+  }
+}
+
+cyber_modules {
+  key: "IndoorPclOmpNdtLocalizationMap03MeasuredZStable"
+  value {
+    dag_files: "/apollo/modules/tools/yunle_dreamview_bridge/dag/indoor_pclomp_ndt_map03_measured_zstable_tools.dag"
+    process_group: "yunle_indoor_pclomp_ndt_localization_map03_measured_z_stable"
+    required_for_safety: false
+  }
+}
+
+cyber_modules {
+  key: "IndoorPlanningHeadingAdapter"
+  value {
+    dag_files: "/apollo/modules/tools/yunle_dreamview_bridge/dag/indoor_planning_heading_adapter.dag"
+    process_group: "yunle_indoor_planning_heading_adapter"
+    required_for_safety: false
+  }
+}
+
+cyber_modules {
+  key: "IndoorRouting"
+  value {
+    dag_files: "/apollo/modules/routing/dag/yunle_indoor_routing.dag"
+    process_group: "yunle_indoor_routing"
+    required_for_safety: false
+  }
+}
+
+cyber_modules {
+  key: "IndoorCommand"
+  value {
+    dag_files: "/apollo/modules/external_command/process_component/dag/yunle_indoor_external_command_process.dag"
+    dag_files: "/apollo/modules/external_command/old_routing_adapter/dag/yunle_indoor_old_routing_adapter.dag"
+    process_group: "yunle_indoor_command"
+    required_for_safety: false
+  }
+}
+
+cyber_modules {
+  key: "IndoorEmptyPrediction"
+  value {
+    dag_files: "/apollo/modules/tools/yunle_dreamview_bridge/dag/indoor_empty_prediction_publisher.dag"
+    process_group: "yunle_indoor_empty_prediction"
+    required_for_safety: false
+  }
+}
+
+cyber_modules {
+  key: "IndoorPlanning"
+  value {
+    dag_files: "/apollo/modules/planning/planning_component/dag/yunle_indoor_planning.dag"
+    process_group: "yunle_indoor_planning"
+    required_for_safety: false
+  }
+}
+
+cyber_modules {
+  key: "YunleApolloControlTest"
+  value {
+    dag_files: "/apollo/modules/canbus_vehicle/yunle/dag/yunle_chassis_apollo_control_test.dag"
+    process_group: "yunle_chassis_apollo_control_test"
+    required_for_safety: false
+  }
+}
+
+cyber_modules {
+  key: "Control"
+  value {
+    dag_files: "/apollo/modules/control/control_component/dag/control.dag"
+    process_group: "control"
+    required_for_safety: false
+  }
+}
+
+operations: Record
+operations: Waypoint_Follow
+operations: Auto_Drive
+default_operation: Record

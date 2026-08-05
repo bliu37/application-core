@@ -9,6 +9,7 @@ This tool intentionally publishes only /apollo/planning.  It does not publish
 import argparse
 import math
 import os
+import sys
 import threading
 import time
 
@@ -169,10 +170,15 @@ def print_detail(label, detail):
     if detail is None:
         print("{}: no Yunle chassis detail".format(label))
         return
+    pad_start_required = getattr(detail, "control_pad_start_required", False)
+    pad_started = getattr(detail, "control_pad_started", False)
+    last_pad_action = getattr(detail, "last_control_pad_action", 0)
     print(("{}: shift={} parking={} speed_kph={:.3f} scu_brake={} "
            "scu_target_kph={:.3f} vehicle_target_kph={:.3f} "
            "cmd_target_kph={:.3f} cmd_steering={:.2f} fresh={} "
-           "interlocks={} failsafe={} sent={} errors={} reason={!r}").format(
+           "interlocks={} failsafe={} sent={} errors={} "
+           "pad_start_required={} pad_started={} last_pad_action={} "
+           "reason={!r}").format(
                label, detail.shift_status, detail.parking_status,
                detail.vehicle_speed_kph, detail.scu_brake,
                detail.scu_target_speed_kph, detail.vehicle_target_speed_kph,
@@ -182,6 +188,9 @@ def print_detail(label, detail):
                detail.control_failsafe_active,
                detail.sent_control_frame_count,
                detail.control_send_error_count,
+               pad_start_required,
+               pad_started,
+               last_pad_action,
                detail.control_block_reason))
 
 
@@ -312,6 +321,8 @@ def main():
         exit_code = 1
         print("ERROR: {}".format(exc))
     finally:
+        sys.stdout.flush()
+        sys.stderr.flush()
         os._exit(exit_code)
 
 

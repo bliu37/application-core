@@ -1,0 +1,18 @@
+# JD03 indoor SLAM transform chain.
+#
+# localization is defined at the IMU origin, so localization -> imu is an
+# intentional identity. imu -> lslidar16v4 uses the initial tape-measured JD03
+# mounting geometry; calibrate that extrinsic before creating a formal map.
+extrinsic_file {
+    frame_id: "localization"
+    child_frame_id: "imu"
+    file_path: "/apollo/modules/transform/params/yunle_indoor_test_localization_imu_extrinsics.yaml"
+    enable: true
+}
+
+extrinsic_file {
+    frame_id: "imu"
+    child_frame_id: "lslidar16v4"
+    file_path: "/apollo/modules/transform/params/yunle_indoor_test_imu_lidar_extrinsics.yaml"
+    enable: true
+}

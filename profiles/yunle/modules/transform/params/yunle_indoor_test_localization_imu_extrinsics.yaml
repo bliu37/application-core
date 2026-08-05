@@ -1,0 +1,22 @@
+# FRAME CONVENTION: localization is defined at the IMU origin with the same
+# axes, so this transform is intentionally identity. Do not put the measured
+# IMU-to-lidar lever arm in this file. If localization is later moved to a
+# vehicle reference point such as the rear axle, replace this with the measured
+# localization-to-IMU transform.
+child_frame_id: imu
+transform:
+  translation:
+    x: 0.0
+    y: 0.0
+    z: 0.0
+  rotation:
+    x: 0.0
+    y: 0.0
+    z: 0.0
+    w: 1.0
+header:
+  seq: 0
+  stamp:
+    secs: 0
+    nsecs: 0
+  frame_id: localization

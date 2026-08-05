@@ -33,6 +33,7 @@ apollo_component(
         "@common//:modules_Scommon_Sutil_Cmessage_util",
         "@common-msgs//:modules_Scommon_msgs_Schassis_msgs_Cchassis_proto",
         "@common-msgs//:modules_Scommon_msgs_Scontrol_msgs_Ccontrol_cmd_proto",
+        "@common-msgs//:modules_Scommon_msgs_Splanning_msgs_Cplanning_proto",
         "@cyber//:cyber_Ccyber",
     ],
 )

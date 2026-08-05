@@ -47,6 +47,23 @@ message YunleChassisReceiverConfig {
   // chassis feedback itself reports autonomous mode. The default remains false
   // so preview/receive-only startup cannot accidentally engage Apollo Control.
   optional bool report_auto_driving_mode = 21 [default = false];
+
+  // Commissioning-only: require an explicit Dreamview/Control Pad START before
+  // forwarding Apollo ControlCommand messages to the Yunle SCU. This prevents a
+  // sent route from moving the vehicle before the operator presses Start.
+  optional bool require_control_pad_start = 22 [default = false];
+
+  optional string planning_topic = 23 [default = "/apollo/planning"];
+
+  // Commissioning-only: when Planning reports destination/reference-end stop
+  // and the vehicle is stationary on a zero-speed ControlCommand, briefly
+  // request SCU remote/neutral and disarm the Pad START gate. This prevents
+  // terminal-stop ControlCommand messages from holding AUTO and nudging the
+  // vehicle after a short indoor route completes.
+  optional bool release_to_remote_on_terminal_stop = 24 [default = false];
+  optional uint32 terminal_stop_release_delay_ms = 25 [default = 800];
+  optional uint32 remote_release_send_ms = 26 [default = 500];
+  optional uint32 planning_terminal_stop_timeout_ms = 27 [default = 1000];
 }
 
 // A separate detail type is used so that it cannot conflict with Apollo's
@@ -125,4 +142,14 @@ message YunleChassisDetail {
   optional double commanded_steering_percentage = 108;
   optional uint32 commanded_gear = 109;
   optional string control_block_reason = 110;
+  optional bool control_pad_start_required = 111;
+  optional bool control_pad_started = 112;
+  optional uint32 last_control_pad_action = 113;
+  optional bool planning_terminal_stop_received = 114;
+  optional bool planning_terminal_stop_fresh = 115;
+  optional bool terminal_stop_release_ready = 116;
+  optional bool remote_release_active = 117;
+  optional uint64 remote_release_frame_count = 118;
+  optional string planning_terminal_stop_reason = 119;
+  optional bool terminal_stop_released_to_remote = 120;
 }

@@ -1,0 +1,32 @@
+vehicle_param {
+  brand: DKIT
+  vehicle_id {
+    other_unique_id: "yunle_jd03_xiaoyu800"
+  }
+
+  # Yunle JD03 / Xiaoyu 800 chassis survey:
+  # length 900 mm, width 700 mm, IMU center to front edge 550 mm,
+  # and IMU center to left edge 380 mm.
+  # The current indoor localization reference is the IMU frame.
+  front_edge_to_center: 0.550
+  back_edge_to_center: 0.350
+  left_edge_to_center: 0.380
+  right_edge_to_center: 0.320
+
+  length: 0.900
+  width: 0.700
+  height: 0.856
+
+  min_turn_radius: 1.0
+  max_acceleration: 0.5
+  max_deceleration: -1.5
+  max_steer_angle: 0.60
+  max_steer_angle_rate: 1.5
+  min_steer_angle_rate: 0.0
+  steer_ratio: 1.0
+  wheel_base: 0.52
+  wheel_rolling_radius: 0.133
+  max_abs_speed_when_stopped: 0.05
+  brake_deadzone: 0.0
+  throttle_deadzone: 0.0
+}

@@ -20,6 +20,7 @@
 #include <unistd.h>
 
 #include <array>
+#include <atomic>
 #include <cerrno>
 #include <chrono>
 #include <cmath>
@@ -38,6 +39,7 @@
 #include "modules/common/util/message_util.h"
 #include "modules/common_msgs/chassis_msgs/chassis.pb.h"
 #include "modules/common_msgs/control_msgs/control_cmd.pb.h"
+#include "modules/common_msgs/planning_msgs/planning.pb.h"
 
 namespace apollo {
 namespace canbus {
@@ -59,8 +61,13 @@ constexpr double kAbsoluteControlSteeringLimitPercentage = 90.0;
 constexpr double kControlCommandSpeedNegativeToleranceMps = 0.02;
 constexpr double kControlCommandSpeedUpperToleranceKph = 0.05;
 constexpr double kStationaryFailsafeSuppressSpeedKph = 0.05;
+constexpr double kTerminalStopStationarySpeedKph = 0.10;
+constexpr double kTerminalStopZeroSpeedCommandThresholdMps = 0.05;
 constexpr uint32_t kAbsoluteControlCommandTimeoutMs = 200U;
 constexpr uint32_t kAbsoluteFailsafeSendMs = 500U;
+constexpr uint32_t kAbsoluteTerminalStopReleaseDelayMs = 5000U;
+constexpr uint32_t kAbsoluteRemoteReleaseSendMs = 2000U;
+constexpr uint32_t kAbsolutePlanningTerminalStopTimeoutMs = 5000U;
 
 double Clamp(double value, double lower, double upper) {
   if (value < lower) {
@@ -100,6 +107,22 @@ WheelSpeed::WheelSpeedType ToWheelDirection(double rpm) {
   return WheelSpeed::STANDSTILL;
 }
 
+bool IsTerminalStopReason(apollo::planning::StopReasonCode reason_code) {
+  return reason_code == apollo::planning::STOP_REASON_DESTINATION ||
+         reason_code == apollo::planning::STOP_REASON_REFERENCE_END;
+}
+
+std::string StopReasonName(apollo::planning::StopReasonCode reason_code) {
+  switch (reason_code) {
+    case apollo::planning::STOP_REASON_DESTINATION:
+      return "destination";
+    case apollo::planning::STOP_REASON_REFERENCE_END:
+      return "reference_end";
+    default:
+      return "stop_reason_" + std::to_string(static_cast<int>(reason_code));
+  }
+}
+
 }  // namespace
 
 class YunleChassisReceiverComponent final
@@ -134,6 +157,16 @@ class YunleChassisReceiverComponent final
         AERROR << "Failed to create Yunle control command reader.";
         return false;
       }
+      if (config_.release_to_remote_on_terminal_stop()) {
+        planning_reader_ = node_->CreateReader<apollo::planning::ADCTrajectory>(
+            config_.planning_topic(),
+            [this](const std::shared_ptr<apollo::planning::ADCTrajectory>&
+                       trajectory) { OnPlanningTrajectory(trajectory); });
+        if (planning_reader_ == nullptr) {
+          AERROR << "Failed to create Yunle planning trajectory reader.";
+          return false;
+        }
+      }
     }
     if (!OpenReceiveSocket()) {
       return false;
@@ -145,6 +178,14 @@ class YunleChassisReceiverComponent final
             << config_.maximum_control_steering_percentage()
             << "% steering. UDP peer: " << config_.remote_ip() << ":"
             << config_.remote_port();
+      if (config_.require_control_pad_start()) {
+        AWARN << "Yunle 0x121 control transmission is gated until "
+              << "Dreamview/Control sends Pad START.";
+      }
+      if (config_.release_to_remote_on_terminal_stop()) {
+        AWARN << "Yunle terminal-stop remote release is ENABLED on "
+              << config_.planning_topic() << ".";
+      }
     } else {
       AWARN << "Yunle control transmitter is compiled but DISABLED by "
             << "Profile. Component remains receive-only. Listening on "
@@ -182,6 +223,11 @@ class YunleChassisReceiverComponent final
                 "topic.";
       return false;
     }
+    if (config_.release_to_remote_on_terminal_stop() &&
+        config_.planning_topic().empty()) {
+      AERROR << "Yunle terminal-stop release requires a planning topic.";
+      return false;
+    }
     if (config_.max_steering_magnitude() <= 0.0 ||
         config_.wheel_radius_m() <= 0.0 ||
         config_.feedback_timeout_ms() == 0U ||
@@ -191,9 +237,21 @@ class YunleChassisReceiverComponent final
         config_.control_command_timeout_ms() >
             kAbsoluteControlCommandTimeoutMs ||
         config_.failsafe_send_ms() == 0U ||
-        config_.failsafe_send_ms() > kAbsoluteFailsafeSendMs) {
+        config_.failsafe_send_ms() > kAbsoluteFailsafeSendMs ||
+        config_.terminal_stop_release_delay_ms() >
+            kAbsoluteTerminalStopReleaseDelayMs ||
+        config_.remote_release_send_ms() == 0U ||
+        config_.remote_release_send_ms() > kAbsoluteRemoteReleaseSendMs ||
+        config_.planning_terminal_stop_timeout_ms() == 0U ||
+        config_.planning_terminal_stop_timeout_ms() >
+            kAbsolutePlanningTerminalStopTimeoutMs) {
       AERROR << "Yunle chassis receiver config contains an invalid physical "
                 "or timeout parameter.";
+      return false;
+    }
+    if (config_.release_to_remote_on_terminal_stop() &&
+        !config_.enable_control_send()) {
+      AERROR << "Yunle terminal-stop release requires control send enabled.";
       return false;
     }
     if (!std::isfinite(config_.maximum_control_speed_kph()) ||
@@ -418,10 +476,139 @@ class YunleChassisReceiverComponent final
     if (command == nullptr) {
       return;
     }
+    UpdateControlPadStartState(*command);
     std::lock_guard<std::mutex> lock(control_command_mutex_);
     latest_control_command_.CopyFrom(*command);
     has_control_command_ = true;
     last_control_command_ = Clock::now();
+  }
+
+  void UpdateControlPadStartState(
+      const control::ControlCommand& command) {
+    if (!config_.require_control_pad_start() || !command.has_pad_msg() ||
+        !command.pad_msg().has_action()) {
+      return;
+    }
+    const auto action = command.pad_msg().action();
+    last_control_pad_action_.store(static_cast<uint32_t>(action));
+    if (action == control::DrivingAction::START) {
+      if (terminal_stop_released_to_remote_.load()) {
+        return;
+      }
+      if (!control_pad_started_.exchange(true)) {
+        AINFO << "Yunle control gate armed by Pad START.";
+      }
+    } else if (action == control::DrivingAction::RESET) {
+      terminal_stop_released_to_remote_.store(false);
+      if (control_pad_started_.exchange(false)) {
+        AWARN << "Yunle control gate disarmed by Pad RESET.";
+      }
+    }
+  }
+
+  void DisarmControlPadStart(const std::string& reason) {
+    if (config_.require_control_pad_start() &&
+        control_pad_started_.exchange(false)) {
+      AWARN << "Yunle control gate disarmed: " << reason;
+    }
+  }
+
+  bool ControlPadStartGateAllowsScuControl(std::string* reason) const {
+    if (!config_.require_control_pad_start() ||
+        control_pad_started_.load()) {
+      return true;
+    }
+    if (terminal_stop_released_to_remote_.load()) {
+      *reason = "terminal stop released to remote; waiting for next route";
+      return false;
+    }
+    *reason = "waiting for Dreamview Start (/apollo/control/pad START)";
+    return false;
+  }
+
+  bool ExtractTerminalPlanningStop(
+      const apollo::planning::ADCTrajectory& trajectory,
+      std::string* reason) const {
+    if (!trajectory.has_decision()) {
+      return false;
+    }
+    const auto& decision = trajectory.decision();
+    if (decision.has_main_decision()) {
+      const auto& main_decision = decision.main_decision();
+      if (main_decision.has_mission_complete()) {
+        *reason = "mission_complete";
+        return true;
+      }
+      if (main_decision.has_stop() &&
+          main_decision.stop().has_reason_code() &&
+          IsTerminalStopReason(main_decision.stop().reason_code())) {
+        *reason = "main_" +
+                  StopReasonName(main_decision.stop().reason_code());
+        return true;
+      }
+    }
+    if (decision.has_object_decision()) {
+      const auto& object_decisions = decision.object_decision();
+      for (const auto& object_decision : object_decisions.decision()) {
+        for (const auto& object_decision_type :
+             object_decision.object_decision()) {
+          if (object_decision_type.has_stop() &&
+              object_decision_type.stop().has_reason_code() &&
+              IsTerminalStopReason(
+                  object_decision_type.stop().reason_code())) {
+            *reason = "object_" +
+                      StopReasonName(
+                          object_decision_type.stop().reason_code());
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  }
+
+  void OnPlanningTrajectory(
+      const std::shared_ptr<apollo::planning::ADCTrajectory>& trajectory) {
+    if (trajectory == nullptr) {
+      return;
+    }
+    std::string reason;
+    const bool terminal_stop =
+        ExtractTerminalPlanningStop(*trajectory, &reason);
+    std::lock_guard<std::mutex> lock(planning_mutex_);
+    if (terminal_stop) {
+      planning_terminal_stop_received_ = true;
+      last_terminal_planning_ = Clock::now();
+      planning_terminal_stop_reason_ = reason;
+      return;
+    }
+    planning_terminal_stop_received_ = false;
+    planning_terminal_stop_reason_.clear();
+    terminal_stop_released_to_remote_.store(false);
+  }
+
+  bool PlanningTerminalStopIsFresh(const TimePoint& now,
+                                   std::string* reason) const {
+    std::lock_guard<std::mutex> lock(planning_mutex_);
+    if (!planning_terminal_stop_received_) {
+      return false;
+    }
+    if (!IsFresh(true, last_terminal_planning_,
+                 config_.planning_terminal_stop_timeout_ms(), now)) {
+      return false;
+    }
+    *reason = planning_terminal_stop_reason_;
+    return true;
+  }
+
+  bool PlanningTerminalStopWasReceived() const {
+    std::lock_guard<std::mutex> lock(planning_mutex_);
+    return planning_terminal_stop_received_;
+  }
+
+  std::string PlanningTerminalStopReason() const {
+    std::lock_guard<std::mutex> lock(planning_mutex_);
+    return planning_terminal_stop_reason_;
   }
 
   bool GetFreshControlCommand(const TimePoint& now,
@@ -631,6 +818,114 @@ class YunleChassisReceiverComponent final
     return true;
   }
 
+  bool ControlCommandIsTerminalZeroSpeed(
+      const control::ControlCommand& input,
+      const YunleScuControlCommand& command) const {
+    if (!input.has_speed() || !std::isfinite(input.speed())) {
+      return false;
+    }
+    return std::abs(input.speed()) <=
+               kTerminalStopZeroSpeedCommandThresholdMps &&
+           command.target_speed_kph <=
+               kTerminalStopZeroSpeedCommandThresholdMps * 3.6;
+  }
+
+  void MaybeResetTerminalReleaseOnStart(
+      const control::ControlCommand& input) {
+    if (!input.has_pad_msg() || !input.pad_msg().has_action() ||
+        input.pad_msg().action() != control::DrivingAction::START) {
+      return;
+    }
+    if (terminal_stop_released_to_remote_.load()) {
+      return;
+    }
+    terminal_stop_released_to_remote_.store(false);
+    remote_release_active_ = false;
+    terminal_stop_release_ready_ = false;
+    has_terminal_stop_stationary_since_ = false;
+  }
+
+  bool TerminalStopReleaseShouldStart(
+      const TimePoint& now, const control::ControlCommand& input,
+      const YunleScuControlCommand& command, std::string* reason) {
+    terminal_stop_release_ready_ = false;
+    if (!config_.release_to_remote_on_terminal_stop() ||
+        terminal_stop_released_to_remote_.load()) {
+      has_terminal_stop_stationary_since_ = false;
+      return false;
+    }
+
+    std::string terminal_reason;
+    if (!PlanningTerminalStopIsFresh(now, &terminal_reason)) {
+      if (!PlanningTerminalStopWasReceived()) {
+        terminal_stop_released_to_remote_.store(false);
+      }
+      has_terminal_stop_stationary_since_ = false;
+      return false;
+    }
+    if (!CoreFeedbackIsFresh(now) ||
+        !ControlCommandIsTerminalZeroSpeed(input, command) ||
+        std::abs(state_.ccu.vehicle_speed_kph) >
+            kTerminalStopStationarySpeedKph) {
+      has_terminal_stop_stationary_since_ = false;
+      return false;
+    }
+
+    if (!has_terminal_stop_stationary_since_) {
+      terminal_stop_stationary_since_ = now;
+      has_terminal_stop_stationary_since_ = true;
+    }
+    terminal_stop_release_ready_ =
+        AgeMs(true, terminal_stop_stationary_since_, now) >=
+        config_.terminal_stop_release_delay_ms();
+    if (!terminal_stop_release_ready_) {
+      return false;
+    }
+    *reason = terminal_reason;
+    return true;
+  }
+
+  void StartRemoteRelease(const TimePoint& now, const std::string& reason) {
+    remote_release_active_ = true;
+    remote_release_started_ = now;
+    terminal_stop_released_to_remote_.store(true);
+    control_active_ = false;
+    control_failsafe_active_ = false;
+    DisarmControlPadStart("Planning terminal stop: " + reason);
+    control_block_reason_ = "terminal stop release to remote: " + reason;
+    AWARN << "Yunle terminal stop detected (" << reason
+          << "); releasing SCU to remote/neutral.";
+  }
+
+  bool MaybeSendRemoteRelease(const TimePoint& now) {
+    if (!remote_release_active_) {
+      return false;
+    }
+    if (AgeMs(true, remote_release_started_, now) >
+        config_.remote_release_send_ms()) {
+      remote_release_active_ = false;
+      terminal_stop_release_ready_ = false;
+      control_active_ = false;
+      control_failsafe_active_ = false;
+      control_block_reason_ = "terminal stop released to remote";
+      return true;
+    }
+
+    YunleScuControlCommand release;
+    release.drive_mode = YunleDriveModeRequest::kRemote;
+    release.gear = YunleGearRequest::kNeutral;
+    release.target_speed_kph = 0.0;
+    release.front_steering_percentage = 0.0;
+    release.rear_steering_percentage = 0.0;
+    release.brake_enable = false;
+    if (SendScuControl121(release)) {
+      ++remote_release_frame_count_;
+    } else {
+      control_block_reason_ = "terminal stop remote release send failed";
+    }
+    return true;
+  }
+
   void StartFailsafe(const TimePoint& now) {
     if (!control_failsafe_active_) {
       control_failsafe_active_ = true;
@@ -641,6 +936,7 @@ class YunleChassisReceiverComponent final
   void MaybeSendControl(const TimePoint& now) {
     control_command_fresh_ = false;
     control_interlocks_ok_ = false;
+    terminal_stop_release_ready_ = false;
     if (!config_.enable_control_send()) {
       control_block_reason_ = "control send disabled by Profile";
       return;
@@ -648,17 +944,29 @@ class YunleChassisReceiverComponent final
 
     control::ControlCommand input;
     control_command_fresh_ = GetFreshControlCommand(now, &input);
+    if (control_command_fresh_) {
+      MaybeResetTerminalReleaseOnStart(input);
+    }
     if (CoreFeedbackIsFresh(now) &&
         HardwareOverrideBlocksControl(&control_block_reason_)) {
+      DisarmControlPadStart(control_block_reason_);
       control_active_ = false;
       control_failsafe_active_ = false;
+      remote_release_active_ = false;
+      return;
+    }
+    if (MaybeSendRemoteRelease(now)) {
       return;
     }
     if (!control_command_fresh_) {
       control_block_reason_ = "no fresh ControlCommand";
+      DisarmControlPadStart(control_block_reason_);
     } else {
       control_interlocks_ok_ =
           ControlInterlocksAreSatisfied(now, &control_block_reason_);
+      if (!control_interlocks_ok_) {
+        DisarmControlPadStart(control_block_reason_);
+      }
     }
 
     bool control_command_allows_scu = false;
@@ -666,13 +974,26 @@ class YunleChassisReceiverComponent final
       control_command_allows_scu =
           ControlCommandAllowsScuControl(input, &control_block_reason_);
     }
+    bool control_pad_start_allows_scu = false;
+    if (control_command_fresh_ && control_interlocks_ok_ &&
+        control_command_allows_scu) {
+      control_pad_start_allows_scu =
+          ControlPadStartGateAllowsScuControl(&control_block_reason_);
+    }
 
     YunleScuControlCommand command;
     const bool command_is_valid =
         control_command_fresh_ && control_interlocks_ok_ &&
-        control_command_allows_scu &&
+        control_command_allows_scu && control_pad_start_allows_scu &&
         BuildScuControlCommand(input, &command, &control_block_reason_);
     if (command_is_valid) {
+      std::string terminal_stop_reason;
+      if (TerminalStopReleaseShouldStart(
+              now, input, command, &terminal_stop_reason)) {
+        StartRemoteRelease(now, terminal_stop_reason);
+        MaybeSendRemoteRelease(now);
+        return;
+      }
       if (SendScuControl121(command)) {
         control_active_ = true;
         control_failsafe_active_ = false;
@@ -931,6 +1252,25 @@ class YunleChassisReceiverComponent final
         commanded_steering_percentage_);
     detail->set_commanded_gear(commanded_gear_);
     detail->set_control_block_reason(control_block_reason_);
+    detail->set_control_pad_start_required(
+        config_.require_control_pad_start());
+    detail->set_control_pad_started(control_pad_started_.load());
+    detail->set_last_control_pad_action(last_control_pad_action_.load());
+    std::string planning_terminal_stop_reason;
+    const bool planning_terminal_stop_fresh =
+        PlanningTerminalStopIsFresh(now, &planning_terminal_stop_reason);
+    if (planning_terminal_stop_reason.empty()) {
+      planning_terminal_stop_reason = PlanningTerminalStopReason();
+    }
+    detail->set_planning_terminal_stop_received(
+        PlanningTerminalStopWasReceived());
+    detail->set_planning_terminal_stop_fresh(planning_terminal_stop_fresh);
+    detail->set_terminal_stop_release_ready(terminal_stop_release_ready_);
+    detail->set_remote_release_active(remote_release_active_);
+    detail->set_remote_release_frame_count(remote_release_frame_count_);
+    detail->set_planning_terminal_stop_reason(planning_terminal_stop_reason);
+    detail->set_terminal_stop_released_to_remote(
+        terminal_stop_released_to_remote_.load());
 
     if (!detail_writer_->Write(detail)) {
       AERROR_EVERY(100) << "Failed to publish Yunle chassis detail.";
@@ -947,6 +1287,8 @@ class YunleChassisReceiverComponent final
   std::shared_ptr<cyber::Writer<Chassis>> chassis_writer_;
   std::shared_ptr<cyber::Writer<YunleChassisDetail>> detail_writer_;
   std::shared_ptr<cyber::Reader<control::ControlCommand>> control_reader_;
+  std::shared_ptr<cyber::Reader<apollo::planning::ADCTrajectory>>
+      planning_reader_;
 
   std::mutex control_command_mutex_;
   control::ControlCommand latest_control_command_;
@@ -965,7 +1307,20 @@ class YunleChassisReceiverComponent final
   double commanded_target_speed_kph_ = 0.0;
   double commanded_steering_percentage_ = 0.0;
   uint32_t commanded_gear_ = 0U;
+  std::atomic<bool> control_pad_started_{false};
+  std::atomic<uint32_t> last_control_pad_action_{0U};
   std::string control_block_reason_ = "control send disabled by Profile";
+  mutable std::mutex planning_mutex_;
+  bool planning_terminal_stop_received_ = false;
+  TimePoint last_terminal_planning_ {};
+  std::string planning_terminal_stop_reason_;
+  bool terminal_stop_release_ready_ = false;
+  bool remote_release_active_ = false;
+  TimePoint remote_release_started_ {};
+  bool has_terminal_stop_stationary_since_ = false;
+  TimePoint terminal_stop_stationary_since_ {};
+  uint64_t remote_release_frame_count_ = 0;
+  std::atomic<bool> terminal_stop_released_to_remote_{false};
 
   YunleChassisState state_;
   bool has_ccu_ = false;

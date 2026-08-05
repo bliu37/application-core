@@ -26,3 +26,9 @@ maximum_control_steering_percentage: 90.0
 failsafe_send_ms: 500
 require_drive_mode_switch: true
 report_auto_driving_mode: true
+require_control_pad_start: true
+planning_topic: "/apollo/planning"
+release_to_remote_on_terminal_stop: true
+terminal_stop_release_delay_ms: 800
+remote_release_send_ms: 500
+planning_terminal_stop_timeout_ms: 1000
