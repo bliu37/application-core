@@ -1,0 +1,23 @@
+{
+  "name": "map-editor",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Portable map editor with React/Three.js frontend and Node.js backend",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "ci:frontend": "npm --prefix frontend ci",
+    "ci:backend": "npm --prefix backend ci",
+    "ci:all": "npm run ci:frontend && npm run ci:backend",
+    "install:frontend": "npm --prefix frontend install",
+    "install:backend": "npm --prefix backend install",
+    "install:all": "npm run install:frontend && npm run install:backend",
+    "typecheck": "npm --prefix frontend run typecheck",
+    "check:backend": "npm --prefix backend run check",
+    "check": "npm run typecheck && npm run check:backend",
+    "build": "npm --prefix frontend run build",
+    "start:frontend": "npm --prefix frontend start",
+    "start:backend": "npm --prefix backend start"
+  }
+}

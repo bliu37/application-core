@@ -1,0 +1,112 @@
+/******************************************************************************
+ * Copyright 2023 The Apollo Authors. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *****************************************************************************/
+
+syntax = "proto2";
+
+package apollo.tile_map_images_creator;
+
+message ReaderConf {
+  optional string point_cloud_channel = 1
+      [default = "/apollo/sensor/lidar2world/PointCloud2"];
+  optional string localization_channel = 2
+      [default = "/apollo/localization/pose"];
+  optional double maximum_timestamp_interval = 3 [default = 0.2];  // second
+}
+
+message TrafficLightDetectionConf {
+  optional string camera_frame_id = 1;  // 采集红绿灯信息所用的摄像头frameid
+  optional string camera_channel = 2;              // 摄像头channel
+  optional string camera_intrinsic_file_path = 3;  // 摄像头内参路径
+  optional double car2stopline_max_distance = 4
+      [default = 5];  // 采集车离红绿灯停止线的最远距离
+  optional double car2stopline_max_deg = 5
+      [default = 45];  // 采集车偏转红绿灯停止线的最大角度
+}
+
+message InputOutputConf {
+  required string input_dir = 1;
+  required string bin_output_dir = 2;
+  required string images_output_dir = 3;
+  optional bool use_LRU_cache = 4;
+  optional int32 LRU_cache_size = 5;
+}
+
+message IntensityConverterConf {
+  optional bool enable_sigmoid_converter = 1 [default = true];
+  optional double intensity_sigmoid_k = 2 [default = 0.3];
+  optional double intensity_sigmoid_x0 = 3 [default = 8.0];
+
+  //  optional bool enable_height_relative_converter = 4 [default = false];
+  //  optional double height_var_k = 5;
+  //  optional int32 height_count_threshold = 6;
+  //  optional double height_avg_threshold = 7;
+  //  optional double height_var_threshold = 8;
+}
+
+message VerticalSegmentationConf {
+  optional bool enable_height_relative_converter = 4 [default = false];
+  optional double height_var_k = 5;
+  optional int32 height_count_threshold = 6;
+  optional double height_avg_threshold = 7;
+  optional double height_var_threshold = 8;
+}
+
+message FilterConf {
+  optional bool enable_height_filter = 1 [default = false];
+  optional double upper_height_limit_relative_to_pose = 2;
+  optional double lower_height_limit_relative_to_pose = 3;
+
+  optional bool enable_distance_filter = 4 [default = false];
+  optional double upper_distance_limit = 5;
+  optional double lower_distance_limit = 6;
+}
+
+message PointCloudProcessingConf {
+  optional IntensityConverterConf intensity_converter_conf = 1;
+  optional VerticalSegmentationConf vertical_segmentation = 2;
+  optional FilterConf filter_conf = 3;
+}
+
+message MatrixGeneratorConf {
+  required double matrix_resolution = 1;
+  optional int32 matrix_id = 2 [default = 0];
+}
+
+message DebugConf {
+  required bool enable_pcd_file_output = 1;
+  optional string debug_pcd_file_path = 2;
+}
+
+message SlamModeSelectionConf {
+  required bool enable_slam_mode = 1;
+  required string slam_pose_path = 2;
+}
+
+message CoordinateTransformerConf {
+  optional int32 worker_num = 2 [default = 1];
+}
+
+message ImagesCreatorConf {
+  required ReaderConf reader_conf = 1;
+  required InputOutputConf input_output_conf = 2;
+  required MatrixGeneratorConf matrix_generator_conf = 3;
+  required PointCloudProcessingConf point_cloud_processing_conf = 4;
+  optional SlamModeSelectionConf slam_mode_selection_conf = 5;
+  optional CoordinateTransformerConf coordinate_transformer_conf = 6;
+  optional double sample_distance = 7 [default = 0.1];
+  optional DebugConf debug_conf = 8;
+  optional TrafficLightDetectionConf traffic_light_detection_conf = 9;
+}

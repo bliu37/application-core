@@ -1,0 +1,78 @@
+syntax = "proto2";
+
+package apollo.map_tool;
+
+enum ItemCode {
+  // W or E / 检查类 / 编号
+  LaneTooNarrowWarn = 101001;
+  LaneTooWideWarn = 101002;
+  LaneCurvatureTooLargeWarn = 101003;
+  LaneCentralCurveNotForwardError = 201004;
+
+  SignalCannotAssociateLaneError = 202001;
+  SpeedBumpCannotAssociateLaneError = 202002;
+  ParkingSpaceCannotAssociateLaneError = 202003;
+  CrossWalkCannotAssociateLaneError = 202004;
+  StopSignCannotAssociateLaneError = 202005;
+  YieldSignCannotAssociateLaneError = 202006;
+  BarrierGateCannotAssociateLaneError = 202007;
+
+  ParkingSpaceWidthTooSmallError = 203001;
+  ParkingSpaceLengthTooSmallError = 203002;
+  ParkingSpaceWidthTooLargeWarning = 103003;
+  ParkingSpaceLengthTooLargeWarning = 103004;
+  ParkingSpaceNotRectangle = 003005;
+}
+
+enum ErrorLevel {
+  Normal = 0;
+  Warning = 1;
+  Error = 2;
+}
+
+message ErrorMessage {
+  required ItemCode item_code = 1;
+  required ErrorLevel level = 2;
+  required string title = 3;
+  optional string element_id = 4 [default = ""];
+  optional string description = 5 [default = ""];
+}
+
+message ValidatorResult {
+  repeated ErrorMessage error_message = 1;
+}
+
+message CheckerLaneConfig {
+  optional bool enable_width_check = 1 [default = true];
+  optional double width_warning_lower_bound = 2;
+  optional double width_warning_upper_bound = 3;
+
+  optional bool enable_curvature_check = 4 [default = false];
+  optional double curvature_upper_bound = 5;
+
+  optional bool enable_lane_forward_check = 6 [default = true];
+  optional double maximum_angle_difference = 7 [default = 90.0];
+}
+
+message CheckerOverlapConfig {
+  optional bool enable_signal_overlap_lane_check = 1 [default = true];
+  optional bool enable_speed_bump_overlap_lane_check = 2 [default = true];
+  optional bool enable_parking_overlap_lane_check = 3 [default = true];
+  optional bool enable_cross_walk_overlap_lane_check = 4 [default = true];
+  optional bool enable_yield_sign_overlap_lane_check = 5 [default = true];
+  optional bool enable_stop_sign_overlap_lane_check = 6 [default = true];
+  optional bool enable_barrier_gate_overlap_lane_check = 7 [default = true];
+}
+
+message CheckerParkingSpaceSizeConfig {
+  optional double width_warning_upper_bound = 1;
+  optional double width_error_lower_bound = 2;
+  optional double length_warning_upper_bound = 3;
+  optional double length_error_lower_bound = 4;
+}
+
+message MapValidatorConfig {
+  optional CheckerLaneConfig check_lane_config = 1;
+  optional CheckerOverlapConfig check_overlap_config = 2;
+  optional CheckerParkingSpaceSizeConfig check_parking_space_size_config = 3;
+}

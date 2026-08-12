@@ -1,0 +1,236 @@
+syntax = "proto2";
+
+package apollo.map_tool;
+
+message Header {
+  optional string version = 1;
+  optional string date = 2;
+}
+
+message Position {
+  required double x = 1;
+  required double y = 2;
+  optional double z = 3;
+}
+
+message Point {
+  optional string id = 1;
+  optional Position position = 2;
+  optional int32 type = 3;
+}
+
+message BoundaryAttribute {
+  enum Type {
+    UNKNOWN = 0;
+    DOTTED_YELLOW = 1;
+    DOTTED_WHITE = 2;
+    SOLID_YELLOW = 3;
+    SOLID_WHITE = 4;
+    DOUBLE_YELLOW = 5;
+    CURB = 6;
+  };
+  optional Type type = 1;
+}
+
+message Boundary {
+  optional string id = 1;
+  optional BoundaryAttribute attr = 2;
+  repeated string point_id = 3;
+  optional int32 type = 4;
+  repeated Position controls_position = 5;  // 弯道的控制点，只有弯道有
+  repeated string road_boundary_id =
+      6;  // 如果有关联的道路边界, 这个ID是road的道路边界
+}
+
+message RoadBoundary {
+  optional string id = 1;
+  repeated string lane_boundary_id = 2;
+  repeated string point_id = 3;
+  repeated Position controls_position = 4;
+}
+
+message StopLine {
+  optional string id = 1;
+  optional string boundary_id = 2;
+}
+
+message LaneAttribute {
+  optional double speed = 1;
+  enum Direction {
+    NO_TURN = 1;
+    LEFT_TURN = 2;
+    RIGHT_TURN = 3;
+    U_TURN = 4;
+  };
+  enum DrivingDirection {
+    FORWARD = 1;
+    BACKWARD = 2;
+    RELATIVEDIRECTION = 3;
+  };
+  enum LaneType {
+    CITY_DRIVING = 1;
+    BIKING = 2;
+    SHARED = 3;
+  };
+  optional Direction direction = 2;                           // 转向
+  optional DrivingDirection prossible_driving_direction = 3;  // 可行驶方向
+  optional LaneType lane_type = 4;
+}
+
+message Lane {
+  optional string id = 1;
+  optional LaneAttribute attr = 2;
+  optional string left_boundary_id = 3;
+  optional string right_boundary_id = 4;
+  optional string groudId = 5;
+  optional bool left_boundary_reverse = 6;
+  optional bool right_boundary_reverse = 7;
+  optional double width = 8;
+  optional string arrow_id = 9;
+  enum Type {
+    STRIGHT = 1;
+    CURVE = 2;
+  };
+  optional Type type = 10;
+}
+
+message Crosswalk {
+  optional string id = 1;
+  optional string boundary_id = 2;
+  optional string groud_id = 3;
+}
+
+message SpeedBump {
+  optional string id = 1;
+  optional string boundary_id = 2;
+  optional string groud_id = 3;
+}
+
+message JunctionAttribute {
+  enum Type {
+    UNKNOWN = 0;
+    IN_ROAD = 1;
+    CROSS_ROAD = 2;
+    FORK_ROAD = 3;
+    MAIN_SIDE = 4;
+    DEAD_END = 5;
+  };
+  optional Type type = 1;
+}
+
+message JunctionBoundary {
+  optional string id = 1;
+  repeated string point_id = 2;
+}
+
+message JunctionGroud {
+  repeated string id = 1;
+}
+
+message Junction {
+  optional string id = 1;
+  optional JunctionAttribute attr = 2;
+  optional string boundary_id = 3;
+  optional string groud_id = 4;
+}
+
+message SubSignal {
+  optional string id = 1;
+  enum Type {
+    UNKNOWN = 1;
+    CIRCLE = 2;
+    ARROW_LEFT = 3;
+    ARROW_FORWARD = 4;
+    ARROW_RIGHT = 5;
+    ARROW_U_TURN = 6;
+  };
+  optional Type type = 2;
+}
+
+message TrafficSignal {
+  optional string id = 1;
+  optional string stop_line_id = 2;
+  optional double height = 3;
+  optional Position center = 4;
+  enum Type {
+    UNKNOWN = 1;
+    MIX_2_HORIZONTAL = 2;
+    MIX_2_VERTICAL = 3;
+    MIX_3_HORIZONTAL = 4;
+    MIX_3_VERTICAL = 5;
+    SINGLE = 6;
+  };
+  optional Type type = 5;
+  repeated SubSignal sub_signal = 6;
+  optional double heading = 7;
+}
+
+message ParkingSpace {
+  optional string id = 1;
+  optional double length = 2;
+  optional double width = 3;
+  optional string boundary_id = 4;
+  optional double heading = 5;
+  optional string groud_Id = 6;
+  optional string arrow_id = 7;
+}
+
+message YieldSign {
+  optional string id = 1;
+  optional string stop_line_id = 2;
+}
+
+message StopSign {
+  optional string id = 1;
+  optional string stop_line_id = 2;
+}
+
+message Area {
+  optional string id = 1;
+  enum Type {
+    DRIVEABLE = 1;
+    UNDRIVEABLE = 2;
+    CUSTOM = 3;
+  };
+  optional string boundary_id = 2;
+  optional Type type = 3;
+  optional string name = 4;
+  optional string groud_id = 5;
+}
+
+message BarrierGate {
+  optional string id = 1;
+  enum Type {
+    ROD = 1;
+    FENCE = 2;
+    ADVERTISING = 3;
+    TELESCOPIC = 4;
+    OTHER = 5;
+  }
+  optional Type type = 2;
+  optional string boundary_id = 3;
+  optional double height = 4;
+  optional double width = 5;
+  optional double length = 6;
+  optional string stop_line_id = 7;
+  optional string groud_id = 8;
+}
+
+message EditorMap {
+  optional Header header = 1;
+  repeated Point point = 2;
+  repeated Boundary boundary = 3;
+  repeated Lane lane = 4;                // 车道
+  repeated Crosswalk crosswalk = 5;      // 人行道
+  repeated SpeedBump speed_bump = 6;     // 减速带
+  repeated Junction junction = 7;        // 路口
+  optional Position basemap_center = 8;  // 地图中心
+  repeated ParkingSpace parking_space = 9;
+  repeated TrafficSignal traffic_signal = 10;
+  repeated StopLine stop_line = 11;
+  repeated YieldSign yield_sign = 12;
+  repeated StopSign stop_sign = 13;
+  repeated RoadBoundary road_boundary = 14;
+  repeated Area area = 15;
+  repeated BarrierGate barrier_gate = 16;
+}

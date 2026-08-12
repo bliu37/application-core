@@ -11,6 +11,7 @@ from modules.loam_velodyne_indoor.proto import slam_service_pb2
 
 
 ALLOWED_ROOT = "/apollo_workspace/data/map_work/yunle_indoor"
+ALLOWED_PRECREATED_ENTRIES = ("record",)
 
 
 def default_output_dir():
@@ -47,9 +48,21 @@ def validate_output_dir(path):
             "output-dir must be a child directory below {}".format(
                 normalized_root))
     if os.path.exists(normalized_path):
-        raise ValueError(
-            "output-dir already exists; refusing to overwrite: {}".format(
-                normalized_path))
+        if not os.path.isdir(normalized_path):
+            raise ValueError(
+                "output-dir already exists and is not a directory: {}".format(
+                    normalized_path))
+        unexpected_entries = []
+        for name in sorted(os.listdir(normalized_path)):
+            path = os.path.join(normalized_path, name)
+            if name in ALLOWED_PRECREATED_ENTRIES and os.path.isdir(path):
+                continue
+            unexpected_entries.append(name)
+        if unexpected_entries:
+            raise ValueError(
+                "output-dir already exists with map or unexpected content; "
+                "refusing to overwrite: {} entries={}".format(
+                    normalized_path, ",".join(unexpected_entries)))
     return normalized_path
 
 

@@ -1,0 +1,9 @@
+当前文件夹中的文件需要在apollo10.0环境下使用。
+
+buildtool build跳过map_editor文件夹的说明：
+需要修改apollo docker环境中的/opt/apollo/neo/packages/buildtool/10.0.0-rc1-r1/core/action/__init__.py文件，将buildtool build检索的目录中跳过map_editor,
+可使用patch_buildtool_skip_dirs.sh脚本完成，也可直接将本文件夹中的__init__.py替换掉原docker环境中的py文件来实现。
+
+将map_creator文件夹放到apollo中modules文件夹再编译相应的模块即可：
+buildtool build -p modules/map_creator/map_tool modules/map_creator/tile_map_images_creator
+

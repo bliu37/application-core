@@ -1,0 +1,38 @@
+<package format="2">
+  <name>map-creator-map-tool</name>
+  <version>local</version>
+  <description>
+    The map conversion tool.
+  </description>
+
+  <maintainer email="apollo-support@baidu.com">Apollo</maintainer>
+  <license>Apache License 2.0</license>
+  <url type="website">https://www.apollo.auto/</url>
+  <url type="repository">https://github.com/ApolloAuto/apollo</url>
+  <url type="bugtracker">https://github.com/ApolloAuto/apollo/issues</url>
+
+  <depend repo_name="com_github_gflags_gflags" lib_names="gflags">3rd-gflags</depend>
+  <depend repo_name="com_github_google_glog" lib_names="glog">3rd-glog</depend>
+  <depend repo_name="boost">3rd-boost</depend>
+  <depend repo_name="com_google_googletest" lib_names="gtest,gtest_main">3rd-gtest</depend>
+  <depend expose="False">3rd-pcl</depend>
+  <depend repo_name="eigen">3rd-eigen3</depend>
+  <depend repo_name="com_google_absl" lib_names="absl">3rd-absl</depend>
+  <depend repo_name="com_github_nlohmann_json" lib_names="single_json,json">3rd-nlohmann-json</depend>
+  <depend repo_name="opencv" lib_names="core,highgui,imgproc,imgcodecs">3rd-opencv</depend>
+  <depend type="binary" repo_name="common" lib_names="common">common</depend>
+  <depend type="binary" repo_name="common-msgs" lib_names="common-msgs">common-msgs</depend>
+  <depend type="binary" repo_name="map" lib_names="map">map</depend>
+  <depend type="binary" repo_name="routing" lib_names="routing">routing</depend>
+  <depend type="binary" repo_name="map-creator-tile-map-images-creator">map-creator-tile-map-images-creator</depend>
+  
+  <depend expose="False">3rd-rules-python</depend>
+  <depend expose="False">3rd-grpc</depend>
+  <depend expose="False">3rd-bazel-skylib</depend>
+  <depend expose="False">3rd-rules-proto</depend>
+  <depend expose="False">3rd-py</depend>
+
+  <type>module</type>
+  <src_path url="https://github.com/ApolloAuto/apollo">//modules/map_creator/map_tool</src_path>
+
+</package>

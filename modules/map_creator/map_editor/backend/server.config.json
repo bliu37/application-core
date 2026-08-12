@@ -1,0 +1,11 @@
+{
+  "port": 58000,
+  "baseMapRoot": "../data/base_map",
+  "editorMapRoot": "../data/editor_map",
+  "releaseRoot": "../data/released_map",
+  "converterBinary": "/opt/apollo/neo/bin/editor_map_converter",
+  "vehicleConfigPath": "/apollo/modules/common/data/vehicle_param.pb.txt",
+  "skipValidation": false,
+  "serveFrontend": true,
+  "frontendBuildDir": "../frontend/build/map_editor_frontend"
+}
