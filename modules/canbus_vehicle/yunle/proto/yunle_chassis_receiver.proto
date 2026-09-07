@@ -32,6 +32,7 @@ message YunleChassisReceiverConfig {
   optional bool front_wheel_speed_valid = 12 [default = true];
 
   optional string control_topic = 13 [default = "/apollo/control"];
+  optional uint32 control_command_pending_queue_size = 30 [default = 100];
   optional bool enable_control_send = 14 [default = false];
 
   // Upper flag bits used by the ETH-CAN adapter. The encoder always forces
@@ -64,6 +65,12 @@ message YunleChassisReceiverConfig {
   optional uint32 terminal_stop_release_delay_ms = 25 [default = 800];
   optional uint32 remote_release_send_ms = 26 [default = 500];
   optional uint32 planning_terminal_stop_timeout_ms = 27 [default = 1000];
+  optional double terminal_stop_max_path_remain_m = 29 [default = 0.2];
+
+  // Commissioning-only: suppress steering commands when Apollo Control is
+  // effectively stopped. This prevents low-speed terminal hold from leaving
+  // the indoor test vehicle with a large steering angle.
+  optional double zero_steering_below_speed_kph = 28 [default = 0.0];
 }
 
 // A separate detail type is used so that it cannot conflict with Apollo's

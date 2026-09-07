@@ -35,9 +35,12 @@ MODULES = [
         "settle_sec": 3.0,
     },
     {
-        "name": "GnssImu",
-        "process": "gnss",
-        "dags": ["/apollo/modules/drivers/gnss/dag/yunle_indoor_gnss.dag"],
+        "name": "N100Imu",
+        "process": "n100_imu",
+        "dags": [
+            "/apollo/modules/tools/yunle_dreamview_bridge/dag/"
+            "n100_imu_driver.dag"
+        ],
         "settle_sec": 2.0,
     },
     {

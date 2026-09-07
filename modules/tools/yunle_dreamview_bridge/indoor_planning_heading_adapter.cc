@@ -118,20 +118,20 @@ bool RouteHeadingFromRequest(const routing::RoutingRequest& request,
   }
   const auto& start = request.waypoint(0);
   const auto& end = request.waypoint(request.waypoint_size() - 1);
+  if (start.has_pose() && end.has_pose()) {
+    const double dx = end.pose().x() - start.pose().x();
+    const double dy = end.pose().y() - start.pose().y();
+    if (std::hypot(dx, dy) >= 1e-3) {
+      *heading = std::atan2(dy, dx);
+      return std::isfinite(*heading);
+    }
+  }
+
   if (start.has_heading()) {
     *heading = start.heading();
     return std::isfinite(*heading);
   }
-  if (!start.has_pose() || !end.has_pose()) {
-    return false;
-  }
-  const double dx = end.pose().x() - start.pose().x();
-  const double dy = end.pose().y() - start.pose().y();
-  if (std::hypot(dx, dy) < 1e-3) {
-    return false;
-  }
-  *heading = std::atan2(dy, dx);
-  return std::isfinite(*heading);
+  return false;
 }
 
 }  // namespace
@@ -191,6 +191,19 @@ class YunleIndoorPlanningHeadingAdapter final : public cyber::Component<> {
     }
     AINFO << "Updated indoor Planning route heading: " << heading
           << " rad (" << heading * 180.0 / kPi << " deg).";
+    const auto& request = msg->routing_request();
+    const auto& start = request.waypoint(0);
+    const auto& end = request.waypoint(request.waypoint_size() - 1);
+    if (start.has_pose() && end.has_pose()) {
+      AINFO << "Indoor Planning route geometry: start=(" << start.pose().x()
+            << ", " << start.pose().y() << ") end=(" << end.pose().x()
+            << ", " << end.pose().y() << ")";
+    }
+    if (start.has_heading()) {
+      AINFO << "Indoor Planning route request start heading fallback value: "
+            << start.heading() << " rad (" << start.heading() * 180.0 / kPi
+            << " deg).";
+    }
   }
 
   void OnLocalization(
@@ -211,6 +224,8 @@ class YunleIndoorPlanningHeadingAdapter final : public cyber::Component<> {
     auto output =
         std::make_shared<localization::LocalizationEstimate>(*msg);
     auto* pose = output->mutable_pose();
+    const double raw_heading =
+        pose->has_heading() ? pose->heading() : QuaternionToRpy(pose->orientation()).yaw;
     if (has_heading) {
       Rpy rpy = QuaternionToRpy(pose->orientation());
       rpy.yaw = heading;
@@ -223,7 +238,8 @@ class YunleIndoorPlanningHeadingAdapter final : public cyber::Component<> {
 
     AINFO_EVERY(100) << "Planning localization published: xy=("
                      << pose->position().x() << ", " << pose->position().y()
-                     << ") heading=" << pose->heading()
+                     << ") raw_heading=" << raw_heading
+                     << " output_heading=" << pose->heading()
                      << " route_heading_valid=" << has_heading;
     localization_writer_->Write(output);
   }

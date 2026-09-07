@@ -5,6 +5,7 @@
 import argparse
 import datetime
 import os
+import shutil
 
 from cyber.python.cyber_py3 import cyber
 from modules.loam_velodyne_indoor.proto import slam_service_pb2
@@ -32,7 +33,7 @@ def parse_args():
     return parser.parse_args()
 
 
-def validate_output_dir(path):
+def validate_output_dir_path(path):
     if not os.path.isabs(path):
         raise ValueError("output-dir must be an absolute path")
 
@@ -52,18 +53,37 @@ def validate_output_dir(path):
             raise ValueError(
                 "output-dir already exists and is not a directory: {}".format(
                     normalized_path))
-        unexpected_entries = []
-        for name in sorted(os.listdir(normalized_path)):
-            path = os.path.join(normalized_path, name)
-            if name in ALLOWED_PRECREATED_ENTRIES and os.path.isdir(path):
-                continue
-            unexpected_entries.append(name)
-        if unexpected_entries:
-            raise ValueError(
-                "output-dir already exists with map or unexpected content; "
-                "refusing to overwrite: {} entries={}".format(
-                    normalized_path, ",".join(unexpected_entries)))
     return normalized_path
+
+
+def entry_label(entry):
+    suffix = "/" if entry.is_dir(follow_symlinks=False) else ""
+    return entry.name + suffix
+
+
+def remove_path(path):
+    if os.path.isdir(path) and not os.path.islink(path):
+        shutil.rmtree(path)
+    else:
+        os.unlink(path)
+
+
+def prepare_output_dir(path):
+    normalized_path = validate_output_dir_path(path)
+    os.makedirs(normalized_path, exist_ok=True)
+
+    removed_entries = []
+    for entry in sorted(os.scandir(normalized_path), key=lambda item: item.name):
+        if (entry.name in ALLOWED_PRECREATED_ENTRIES and
+                entry.is_dir(follow_symlinks=False)):
+            continue
+        removed_entries.append(entry_label(entry))
+        remove_path(entry.path)
+
+    record_dir = os.path.join(normalized_path, "record")
+    os.makedirs(record_dir, exist_ok=True)
+
+    return normalized_path, removed_entries
 
 
 def response_status_name(status):
@@ -89,7 +109,15 @@ def main():
     if not args.confirm_test_save:
         raise ValueError(
             "--confirm-test-save is required; no save request was sent")
-    output_dir = validate_output_dir(args.output_dir)
+    output_dir, removed_entries = prepare_output_dir(args.output_dir)
+
+    if removed_entries:
+        print("cleaned old output-dir entries:", flush=True)
+        for name in removed_entries:
+            print("  {}".format(name), flush=True)
+    else:
+        print("cleaned old output-dir entries: none", flush=True)
+    print("record entries preserved", flush=True)
 
     cyber.init()
     node = cyber.Node("yunle_indoor_map_save_test_{}".format(os.getpid()))

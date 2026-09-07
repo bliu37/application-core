@@ -4,18 +4,18 @@ header {
   timestamp_sec: 0.0
 }
 waypoint {
-  id: "yunle_lane_1"
+  id: "Lane_1"
   s: 0.500000
   pose {
-    x: 9999.811705
-    y: 9994.077920
+    x: 10000.959849
+    y: 9999.599439
   }
 }
 waypoint {
-  id: "yunle_lane_1"
-  s: 14.500000
+  id: "Lane_1"
+  s: 3.288098
   pose {
-    x: 10000.250886
-    y: 10008.071030
+    x: 9998.172301
+    y: 9999.654861
   }
 }

@@ -119,10 +119,13 @@ def stop_reason_name(reason_code):
 
 
 def driving_action_name(action):
+    driving_action = getattr(control_cmd_pb2, "DrivingAction", None)
+    if driving_action is None:
+        return str(action)
     names = {
-        control_cmd_pb2.DrivingAction.START: "START",
-        control_cmd_pb2.DrivingAction.STOP: "STOP",
-        control_cmd_pb2.DrivingAction.RESET: "RESET",
+        driving_action.START: "START",
+        driving_action.STOP: "STOP",
+        driving_action.RESET: "RESET",
     }
     return names.get(action, str(action))
 

@@ -8,12 +8,10 @@ cyber_modules {
 }
 
 cyber_modules {
-  key: "GnssImu"
+  key: "N100Imu"
   value {
-    # Preserve the CGI-230 IMU topics, but do not publish its outdoor
-    # world -> imu pose into the indoor LIORF TF tree.
-    dag_files: "/apollo/modules/drivers/gnss/dag/yunle_indoor_gnss.dag"
-    process_group: "gnss"
+    dag_files: "/apollo/modules/tools/yunle_dreamview_bridge/dag/n100_imu_driver.dag"
+    process_group: "n100_imu"
     required_for_safety: false
   }
 }

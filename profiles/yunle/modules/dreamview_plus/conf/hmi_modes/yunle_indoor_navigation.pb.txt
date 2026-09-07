@@ -8,10 +8,10 @@ cyber_modules {
 }
 
 cyber_modules {
-  key: "GnssImu"
+  key: "N100Imu"
   value {
-    dag_files: "/apollo/modules/drivers/gnss/dag/yunle_indoor_gnss.dag"
-    process_group: "gnss"
+    dag_files: "/apollo/modules/tools/yunle_dreamview_bridge/dag/n100_imu_driver.dag"
+    process_group: "n100_imu"
     required_for_safety: false
   }
 }
@@ -41,15 +41,6 @@ cyber_modules {
   value {
     dag_files: "/apollo/modules/tools/yunle_dreamview_bridge/dag/indoor_pclomp_ndt_map03_measured_zstable_tools.dag"
     process_group: "yunle_indoor_pclomp_ndt_localization_map03_measured_z_stable"
-    required_for_safety: false
-  }
-}
-
-cyber_modules {
-  key: "IndoorPlanningHeadingAdapter"
-  value {
-    dag_files: "/apollo/modules/tools/yunle_dreamview_bridge/dag/indoor_planning_heading_adapter.dag"
-    process_group: "yunle_indoor_planning_heading_adapter"
     required_for_safety: false
   }
 }

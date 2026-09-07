@@ -42,7 +42,7 @@ constexpr double kMaxOdometryTimeDifferenceSec = 0.50;
 constexpr double kPi = 3.14159265358979323846;
 constexpr double kMaxNdtPlanarCorrectionM = 0.50;
 constexpr double kMaxNdtYawCorrectionRad = 10.0 * kPi / 180.0;
-constexpr double kApolloVehicleHeadingOffsetRad = kPi / 2.0;
+constexpr double kApolloVehicleHeadingOffsetRad = kPi;
 
 struct Rpy {
   double roll = 0.0;
@@ -142,10 +142,10 @@ double ApolloVehicleYawFromIndoorNdtYaw(double yaw) {
 // The current JD03 indoor map can let Apollo's 6-DoF CPU-NDT converge to
 // stable but wrong local optima while the vehicle is stationary. Keep small
 // map-frame NDT corrections, but gate large X/Y/yaw jumps and fall back to the
-// LIORF odometry pose that is already feeding NDT as its motion prior. The
-// LIORF/NDT yaw convention is 90 degrees clockwise from Apollo's vehicle
-// heading, so final Apollo localization adds +90 degrees while preserving the
-// corrected map-frame X/Y.
+// LIORF odometry pose that is already feeding NDT as its motion prior.
+// With the N100-based indoor frame, LIORF/NDT yaw is parallel to Apollo's
+// vehicle-heading convention but points to the rear, so final localization adds
+// 180 degrees while preserving the corrected map-frame X/Y.
 class YunleIndoorNdtPoseStabilizer final : public cyber::Component<> {
  public:
   bool Init() override {

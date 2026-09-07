@@ -31,14 +31,12 @@ constexpr char kLocalizationFrame[] = "localization";
 constexpr char kImuFrame[] = "imu";
 constexpr char kLidarFrame[] = "lslidar16v4";
 
-// Tape-measured JD03 mounting geometry. The CGI-230 axes are X left, Y rear,
-// Z up; the LS-C16 V4 axes are X forward, Y left, Z up. The lidar origin is
-// 0.03 m along IMU X, -0.33 m along IMU Y, and 0.67 m along IMU Z.
-constexpr double kImuToLidarX = 0.03;
-constexpr double kImuToLidarY = -0.33;
-constexpr double kImuToLidarZ = 0.67;
-constexpr double kSinMinus45Degrees = -0.7071067811865476;
-constexpr double kCosMinus45Degrees = 0.7071067811865476;
+// Tape-measured JD03 N100-to-LS-C16 V4 mounting geometry. The N100 driver
+// publishes the IMU frame as X forward, Y left, Z up. The LS-C16 V4 frame uses
+// the same axes, so only the lever arm is applied here.
+constexpr double kImuToLidarX = 0.51;
+constexpr double kImuToLidarY = 0.0;
+constexpr double kImuToLidarZ = 1.09;
 
 void AddTransform(const char* parent_frame, const char* child_frame, double x,
                   double y, double z, double qx, double qy, double qz,
@@ -85,8 +83,7 @@ class YunleIndoorTestTfPublisher final
     AddTransform(kLocalizationFrame, kImuFrame, 0.0, 0.0, 0.0, 0.0, 0.0,
                  0.0, 1.0, &transform_stampeds_);
     AddTransform(kImuFrame, kLidarFrame, kImuToLidarX, kImuToLidarY,
-                 kImuToLidarZ, 0.0, 0.0, kSinMinus45Degrees,
-                 kCosMinus45Degrees, &transform_stampeds_);
+                 kImuToLidarZ, 0.0, 0.0, 0.0, 1.0, &transform_stampeds_);
 
     AWARN << "Publishing intentionally coincident " << kLocalizationFrame
           << " -> " << kImuFrame << " frames and tape-measured " << kImuFrame

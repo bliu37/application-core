@@ -596,7 +596,75 @@ profiles/current # 本机当前 Profile 链接，是否入库应单独决定
   功能提交。
 - 状态：已完成并用于当前室内导航联调。
 
-## 24. 后续记录格式
+## 24. 2026-09-06 至 2026-09-07：N100 室内链路、室内导航稳定性与 MapCreator 流程更新
+
+- 目的：在拆除华测 GNSS/INS 后接入轮趣/FDILink N100，按新的 IMU 坐标系更新
+  室内激光定位和建图链路；同时整理 MapCreator 制图流程、室内 HD Map 安装和
+  导航调试工具，并针对低速导航中的航向、停车转向和 Control 消息积压问题增加
+  诊断与保护。
+- 代码：新增
+  `modules/tools/yunle_dreamview_bridge/n100_imu_driver.cc` 及
+  `dag/n100_imu_driver.dag`，直接读取 N100 串口二进制帧，发布
+  `/apollo/sensor/gnss/imu` 和 `/apollo/sensor/gnss/corrected_imu`；新增
+  `yunle_n100_imu_diagnostic.py` 检查 IMU 频率、加速度、角速度和姿态；新增
+  `yunle_estimate_hdmap_alignment.py`，根据保存的 `6D-Pose.txt`/
+  `3D-Pose.txt` 和 MapCreator 车道中心线估计 HD Map 的二维旋转、平移安装参数。
+  新增 `yunle_start_map_creator_backend.sh`，启动 MapCreator 后端并等待
+  `58000/healthz` 就绪后打印访问地址。
+- 代码：更新室内定位和 TF：
+  `indoor_ndt_pose_stabilizer.cc` 将 N100 坐标约定下的 Apollo 车辆航向补偿由
+  `+90 deg` 改为 `180 deg`；`indoor_test_tf_publisher.cc` 使用尺量外参
+  `imu -> lslidar16v4 = (0.51, 0.00, 1.09) m`、单位旋转；
+  `indoor_planning_heading_adapter.cc` 增加 route 几何航向、原始/输出航向日志，
+  便于排查规划线与定位航向不一致。室内导航 HMI 模式已移除该 Heading Adapter，
+  由 NDT stabilizer 输出的车辆航向直接供 Planning 和 Control 使用。
+- 代码：更新 Yunle 底盘 receiver 和配置协议，给 `/apollo/control` reader 增加
+  可配置队列；增加低速/制动时清零转向、终点剩余路径门槛和对应的编译上限校验。
+  当前 Profile 配置为 `control_command_pending_queue_size: 200`、
+  `zero_steering_below_speed_kph: 0.35`、
+  `terminal_stop_max_path_remain_m: 0.2`，用于降低 Control 消息积压、停车后
+  保持大舵角以及过早触发终点释放的风险。
+- 代码：`yunle_indoor_map_save_test.py` 改为保存地图前清理输出目录中除
+  `record/` 外的文件和目录，同时保留 `record/` 内容；清理过程会打印删除项。
+  `yunle_make_map_creator_image_conf.py` 支持点云高度/距离过滤、瓦片分辨率、矩阵
+  编号和 worker 数参数，并打印目录、硬件 topic、输出位置和下一步瓦片生成命令。
+  导航预检和快照工具同步切换为 N100，并兼容没有 `DrivingAction` 枚举的消息版本。
+- 配置：`Yunle Indoor Localization Tests`、`Yunle Indoor Mapping Tests` 和
+  `Yunle Indoor Navigation` 从旧 `GnssImu` 切换为 `N100Imu`。室内 TF 和 NDT
+  外参统一为 N100/LS-C16 V4 的 `(0.51, 0.00, 1.09)`、单位旋转；Planning 改为
+  直接读取 `/apollo/localization/pose`，短路线的
+  `destination_check_distance` 调整为 `1.0 m`。新增
+  `profiles/yunle/modules/calibration/data/yunle_jd03_xiaoyu800/vehicle_param.pb.txt`。
+- 配置：`profiles/yunle/README.md`、`helpdocs/yunle_apollo/YUNLE_INDOOR_MAPCREATOR_WORKFLOW.md`
+  已补充 N100 接线/外参前置条件、MapCreator 后端启动、参数化底图配置生成、HD
+  Map 自动对齐、float-safe 地图安装、地图重载以及先验证定位/地图/规划再开启
+  Control 的操作顺序。
+- 配置：当前工作区还包含
+  `profiles/yunle/modules/drivers/gnss/conf/gnss_conf.pb.txt` 和
+  `profiles/yunle/modules/transform/conf/static_transform_conf.pb.txt` 的
+  NovAtel 配置变化（`/dev/novatel*`、`G320N`、`world -> novatel` 等）。这部分
+  不属于室内 N100 链路，提交前必须确认是否为本轮有意修改；若机器只保留 N100，
+  室内模式不应依赖这些室外 GNSS 配置。
+- 地图产物：MapCreator 发布了
+  `modules/map_creator/map_editor/data/released_map/yunle_indoor_new_planning/`
+  的 `base_map`、`sim_map`、`routing_map` 和 `editor_map.json`；固定地图槽位
+  `profiles/yunle/modules/map/data/yunle_indoor_map03_planning/` 的对应文本/二进制
+  地图、`default_end_way_point.txt`、`routing_test.pb.txt` 和 `editor_map.json`
+  已被更新。安装过程保留了多个带时间戳的旧地图备份，便于回退；新地图是否
+  纳入提交应只选择最终版本，不要把所有编辑器历史快照一起加入。
+- 验证：已完成 Python 脚本语法、MapCreator 后端启动脚本语法以及工作流命令路径
+  的静态检查；已在现场确认 N100 模式、室内 TF、定位/规划链路和地图发布流程
+  的调试方向。修改 C++ 后仍需要在容器内重新构建并重启实际模块，不能仅凭源码
+  或配置文件判断实车运行结果。
+- 不纳入 Git：根目录下的 `*.INFO`、`*.log.INFO.*`，
+  `modules/map_creator/map_editor/dumps/`，地图槽位下的
+  `*.backup_*`/`*.bad_translate_backup_*` 目录，以及编辑器运行时生成的临时
+  快照和缓存。它们是运行日志、诊断输出或回退副本；地图最终产物是否提交需
+  与代码提交分开审核。
+- 状态：N100 室内接入、流程工具和当前配置修改已完成；C++ 重编译后的全链路
+  实车回归、NovAtel 配置变化的归属确认以及最终地图提交范围仍待提交前核对。
+
+## 25. 后续记录格式
 
 后续每次经确认实施改动时，在本文档顶部当前状态中同步更新，并在本节之前追加如下条目：
 

@@ -18,11 +18,13 @@ max_datagrams_per_cycle: 512
 
 # Apollo control-chain commissioning path.
 control_topic: "/apollo/control"
+control_command_pending_queue_size: 200
 enable_control_send: true
 control_info_byte: 8
 control_command_timeout_ms: 200
 maximum_control_speed_kph: 1.5
 maximum_control_steering_percentage: 90.0
+zero_steering_below_speed_kph: 0.35
 failsafe_send_ms: 500
 require_drive_mode_switch: true
 report_auto_driving_mode: true
@@ -32,3 +34,4 @@ release_to_remote_on_terminal_stop: true
 terminal_stop_release_delay_ms: 800
 remote_release_send_ms: 500
 planning_terminal_stop_timeout_ms: 1000
+terminal_stop_max_path_remain_m: 0.2

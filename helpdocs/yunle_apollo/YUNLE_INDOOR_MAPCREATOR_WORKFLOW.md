@@ -91,6 +91,25 @@ ls /opt/apollo/neo/bin/tile_map_images_creator
 ls /opt/apollo/neo/bin/cyber_recorder
 ```
 
+确认 N100/雷达外参一致：
+
+```bash
+sed -n '1,80p' \
+  profiles/yunle/modules/transform/params/yunle_indoor_test_imu_lidar_extrinsics.yaml
+sed -n '1,80p' \
+  profiles/yunle/modules/localization/msf/params/yunle_indoor_ndt_lidar_extrinsics_minus_90_measured.yaml
+```
+
+当前 N100 版本应为：
+
+```text
+localization -> imu: identity
+imu/localization -> lslidar16v4: translation=(0.51, 0.00, 1.09), rotation=identity
+```
+
+如果 IMU 或雷达重新安装过，必须先同步这两个外参配置，再重新录图并生成
+NDT 地图。旧外参生成的 NDT 地图不能可靠匹配新外参下的实时点云。
+
 启动 map_creator 前端/后端时，另开终端：
 
 ```bash
@@ -113,6 +132,12 @@ http://127.0.0.1:3000
 
 如果前端已经 build，也可以只启动后端并访问：
 
+```bash
+bash /apollo_workspace/modules/tools/yunle_dreamview_bridge/yunle_start_map_creator_backend.sh
+```
+
+脚本检测到后端已经监听成功后会输出浏览器地址。默认访问：
+
 ```text
 http://127.0.0.1:58000
 ```
@@ -129,7 +154,7 @@ yunle_indoor_mapping_tests
 
 ```text
 LslidarC16V4
-GnssImu
+N100Imu
 IndoorTestTf
 IndoorSlamMapping
 YunleChassisPreview
@@ -155,6 +180,9 @@ MAP_DIR=/apollo_workspace/data/map_work/yunle_indoor/$MAP_NAME
 mkdir -p "$MAP_DIR/record"
 echo "$MAP_DIR"
 ```
+或者固定这个MAP_DIR路径名字
+MAP_DIR=/apollo_workspace/data/map_work/yunle_indoor/jd03_indoor_new
+
 
 这里允许先创建 `record/` 子目录。后面保存 LIORF 点云地图时，
 `MAP_DIR` 里只能提前存在这个 `record/` 子目录；如果里面已经有
@@ -232,7 +260,7 @@ $MAP_DIR/topdown_preview.png
 准备 NDT 输入：
 
 ```bash
-python3 modules/tools/yunle_dreamview_bridge/yunle_indoor_ndt_map_prepare.py \
+python3 /apollo_workspace/modules/tools/yunle_dreamview_bridge/yunle_indoor_ndt_map_prepare.py \
   --map-dir "$MAP_DIR"
 ```
 
@@ -260,7 +288,7 @@ ls "$MAP_DIR/ndt_map/local_map_float_safe/config.xml"
 也可以用一条命令完成预览、NDT 准备、NDT 生成和安装固定槽位：
 
 ```bash
-python3 modules/tools/yunle_dreamview_bridge/yunle_prepare_and_install_indoor_ndt_slot.py \
+python3 /apollo_workspace/modules/tools/yunle_dreamview_bridge/yunle_prepare_and_install_indoor_ndt_slot.py \
   --src "$MAP_DIR"
 ```
 
@@ -271,7 +299,7 @@ python3 modules/tools/yunle_dreamview_bridge/yunle_prepare_and_install_indoor_nd
 正式安装前可先 dry-run：
 
 ```bash
-python3 modules/tools/yunle_dreamview_bridge/yunle_prepare_and_install_indoor_ndt_slot.py \
+python3 /apollo_workspace/modules/tools/yunle_dreamview_bridge/yunle_prepare_and_install_indoor_ndt_slot.py \
   --src "$MAP_DIR" \
   --dry-run
 ```
@@ -290,12 +318,56 @@ python3 modules/tools/yunle_dreamview_bridge/yunle_prepare_and_install_indoor_nd
 
 ## 6. 生成 map_creator 二维底图瓦片
 
-先生成瓦片配置：
+先生成瓦片配置。不需要从
+`modules/map_creator/tile_map_images_creator/conf/image_creator_conf.pb.txt`
+复制后手工改目录，脚本会直接生成
+`$MAP_DIR/image_creator_conf.pb.txt`：
 
 ```bash
 python3 modules/tools/yunle_dreamview_bridge/yunle_make_map_creator_image_conf.py \
   --map-dir "$MAP_DIR" \
   --map-name "$MAP_NAME"
+```
+
+脚本运行后会打印：
+
+```text
+本次生成的配置文件
+map_creator 后端读取的底图目录
+下一步 tile_map_images_creator 命令
+后续换目录或换硬件时优先修改的参数
+```
+
+通常只需要改：
+
+```text
+--map-dir               当前建图工作目录
+--map-name              map_creator 里显示/选择的底图名
+--point-cloud-channel   雷达点云 topic，默认 /apollo/sensor/lslidar16v4/PointCloud2
+--localization-channel  定位 topic，默认 /apollo/localization/pose
+--record-dir            record 输入目录，默认 $MAP_DIR/record
+--slam-pose             SLAM 位姿文件，默认 $MAP_DIR/slam_pose_result.bin
+--image-dir             map_creator 底图瓦片输出目录
+--bin-dir               中间 map_bin 输出目录，默认 $MAP_DIR/map_bin
+```
+
+室内默认点云过滤参数已经在脚本里设置为：
+
+```text
+upper_height_limit_relative_to_pose: 1.5
+lower_distance_limit: 0.3
+```
+
+如果更换雷达高度、安装角度或点云质量变化明显，可以通过这些参数微调：
+
+```bash
+python3 modules/tools/yunle_dreamview_bridge/yunle_make_map_creator_image_conf.py \
+  --map-dir "$MAP_DIR" \
+  --map-name "$MAP_NAME" \
+  --upper-height-limit-relative-to-pose 1.5 \
+  --lower-height-limit-relative-to-pose -1.0 \
+  --upper-distance-limit 20.0 \
+  --lower-distance-limit 0.3
 ```
 
 保持 Dreamview 中 `IndoorTestTf` 或对应静态 TF 模块运行。`tile_map_images_creator`
@@ -327,8 +399,11 @@ pkill -f tile_map_images_creator
 打开 map_creator 页面：
 
 ```text
-http://127.0.0.1:3000
+http://127.0.0.1:58000
 ```
+
+如果没有使用已构建前端的后端服务，而是单独启动了开发前端，则访问
+`http://127.0.0.1:3000`。
 
 基本操作：
 
@@ -369,7 +444,7 @@ RELEASED_MAP=/apollo_workspace/modules/map_creator/map_editor/data/released_map/
 先 dry-run：
 
 ```bash
-python3 modules/tools/yunle_dreamview_bridge/yunle_install_released_hdmap_float_safe.py \
+python3 /apollo_workspace/modules/tools/yunle_dreamview_bridge/yunle_install_released_hdmap_float_safe.py \
   --src "$RELEASED_MAP" \
   --dry-run
 ```
@@ -377,7 +452,7 @@ python3 modules/tools/yunle_dreamview_bridge/yunle_install_released_hdmap_float_
 正式安装：
 
 ```bash
-python3 modules/tools/yunle_dreamview_bridge/yunle_install_released_hdmap_float_safe.py \
+python3 /apollo_workspace/modules/tools/yunle_dreamview_bridge/yunle_install_released_hdmap_float_safe.py \
   --src "$RELEASED_MAP"
 ```
 
@@ -395,6 +470,12 @@ python3 modules/tools/yunle_dreamview_bridge/yunle_install_released_hdmap_float_
 
 ```text
 /apollo_workspace/profiles/yunle/modules/map/data/yunle_indoor_map03_planning.backup_YYYYmmdd_HHMMSS
+```
+
+安装后重启 Dreamview，让 Map/Routing/Planning 重新读地图：
+
+```bash
+aem bootstrap restart --plus
 ```
 
 ## 9. 校正 HDMap 与定位坐标
@@ -437,6 +518,47 @@ mkdir -p "$CALIB_DIR"
 
 这段轨迹用于计算 HDMap 的 `rotate_deg`、`translate_x`、`translate_y`。
 
+自动估计参数：
+
+```bash
+python3 modules/tools/yunle_dreamview_bridge/yunle_estimate_hdmap_alignment.py \
+  --map-dir "$MAP_DIR" \
+  --released-map "$RELEASED_MAP"
+```
+
+脚本默认读取：
+
+```text
+$MAP_DIR/6D-Pose.txt
+$MAP_DIR/gnss-map-offset.txt
+$RELEASED_MAP/editor_map.json
+```
+
+如果 `6D-Pose.txt` 不存在，会尝试 `3D-Pose.txt`。脚本会把建图 pose
+转换到 float-safe 的 `(10000, 10000)` 坐标附近，再和 map_creator
+发布地图里的车道中心线做匹配，输出：
+
+```text
+rotate_deg
+translate_x
+translate_y
+可直接复制执行的安装命令
+```
+
+如果知道建图时车辆走的是哪一条 lane，可以指定 lane，减少误匹配：
+
+```bash
+python3 modules/tools/yunle_dreamview_bridge/yunle_estimate_hdmap_alignment.py \
+  --map-dir "$MAP_DIR" \
+  --released-map "$RELEASED_MAP" \
+  --lane-id 1
+```
+
+注意：如果 pose 轨迹基本是一条直线，脚本能较好估计车道方向和横向偏移，
+但沿车道前后方向的平移约束较弱。空间允许时，校准轨迹尽量走 L 型；
+如果只能走直线，执行脚本输出的安装命令后仍需要在 Dreamview 里确认，
+必要时小幅微调 `translate_x` 或 `translate_y`。
+
 如果已经知道修正量，可以重新安装 HDMap 时直接传入：
 
 ```bash
@@ -466,11 +588,20 @@ python3 modules/tools/yunle_dreamview_bridge/yunle_install_released_hdmap_float_
 yunle_indoor_navigation
 ```
 
+先在 Dreamview 的地图选择处确认当前地图是：
+
+```text
+yunle_indoor_map03_planning
+```
+
+先不要启动 `Control` 和 `YunleApolloControlTest`。确认定位、HDMap、
+Routing、Planning 都正常后，再进入闭环控制。
+
 启动：
 
 ```text
 LslidarC16V4
-GnssImu
+N100Imu
 IndoorTestTf
 IndoorLiorfOdometry
 IndoorPclOmpNdtLocalizationMap03MeasuredZStable
@@ -531,6 +662,42 @@ HDMap 和 localization 坐标没对齐。需要对 editor_map.json 做整体旋�
 ```text
 通常是 HDMap 坐标仍在 y=9000000 附近，Dreamview float 精度不够。
 请使用 yunle_install_released_hdmap_float_safe.py 安装。
+也要确认 Dreamview 当前选择的地图是 yunle_indoor_map03_planning。
+```
+
+导航模式按钮已启动，但没有车辆定位：
+
+```text
+先确认 /apollo/localization/pose 是否有实时数据。
+如果 NDT 日志持续出现 accepted=0，说明 NDT 匹配未通过，不会发布定位。
+优先检查 NDT 外参是否和当前 N100/雷达静态 TF 一致，并确认固定 NDT 槽位
+是用当前硬件外参重新录制的数据生成的。
+```
+
+定位有了，但 Dreamview 车头方向和车道垂直：
+
+```text
+通常是旧 GNSS/LIORF 坐标时代的 90 度航向补偿还在生效。
+当前 N100 版本不应再额外加 90 度。
+修改 C++ 后必须重新 buildtool build，并重启
+IndoorPclOmpNdtLocalizationMap03MeasuredZStable。
+```
+
+定位有了，车身和车道平行，但车头车尾正好反了：
+
+```text
+最终 /apollo/localization/pose 还需要相对 /apollo/yunle/indoor/ndt/raw_pose
+补偿 180 度。当前 N100 版本使用 kApolloVehicleHeadingOffsetRad = kPi。
+修改 C++ 后必须重新 buildtool build，并重启
+IndoorPclOmpNdtLocalizationMap03MeasuredZStable。
+```
+
+Map 模块加载成功，但日志提示 lane width 小于 half vehicle width：
+
+```text
+map_creator 里画的车道宽度太窄，或 Apollo 当前使用的 half_vehicle_width
+仍是默认 1.05m。教学小车车道建议先画宽一些；若确实是窄车道，需要再统一
+修正 Apollo 使用的车辆宽度参数。
 ```
 
 `tile_map_images_creator` 报静态 TF 查询失败：

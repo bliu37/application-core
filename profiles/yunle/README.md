@@ -14,7 +14,7 @@
 | 底盘协议 | Yunle JD03 V4.5，UDP/ETH-CAN，控制 CAN ID `0x121` |
 | 激光雷达 | 镭神 LS-C16 V4 |
 | 雷达适配源码 | `modules/drivers/lidar/lslidar_c16v4_custom` |
-| GNSS/INS | 华测 CGI-230，Apollo `HUACE_TEXT` 解析器 |
+| 室内 IMU | 轮趣/FDILink N100，Yunle Cyber 串口驱动 |
 | Dreamview 辅助源码 | `modules/tools/yunle_dreamview_bridge` |
 | 整车配置 | `profiles/yunle` |
 
@@ -27,7 +27,7 @@ profiles/yunle/modules/
 ├── control/                # Yunle 低速横纵向控制参数
 ├── dreamview_plus/         # Yunle 传感器、室内建图和整车测试模式
 ├── external_command/       # 室内导航命令转换和 RoutingResponse 输出配置
-├── drivers/gnss/           # CGI-230 串口及解析配置
+├── drivers/gnss/           # 旧 CGI-230 串口及解析配置，室内链路不再依赖
 ├── drivers/lidar/          # LS-C16 V4 参数和 DAG
 ├── localization/           # RTK 与室内 CPU NDT localization 配置
 ├── loam_velodyne_indoor/   # 室内激光 SLAM 兼容性测试配置
@@ -59,7 +59,7 @@ profiles/yunle/modules/
 兼容性测试：
 
 - `LslidarC16V4`
-- `GnssImu`
+- `N100Imu`
 - `IndoorTestTf`
 - `IndoorSlamMapping`
 - `YunleChassisPreview`
@@ -68,27 +68,29 @@ profiles/yunle/modules/
 控制 receiver。它已完成静止漂移、直行距离、左右转角和地图保存验证，当前
 用于生成室内点云地图；不会直接生成 Apollo 语义 HD Map。
 
-该模式的 `GnssImu` 使用独立的 `yunle_indoor_gnss.dag`：继续发布
-CGI-230 的 100 Hz IMU 数据，但关闭 GNSS 驱动生成的 `world -> imu`
-动态 TF。室内车辆位置不能使用室外固定天线的 GNSS 位姿，而且该 TF 会与
-LIORF 所需的 `localization -> imu` 形成双父节点冲突。`Yunle Vehicle
-Tests` 仍使用原来的室外 GNSS 配置，不受此项隔离影响。
+该模式的 `N100Imu` 使用独立的 `n100_imu_driver.dag`：直接读取 N100
+串口数据，并继续发布室内 LIORF 需要的 `/apollo/sensor/gnss/imu`，同时在
+收到 AHRS 姿态后发布 `/apollo/sensor/gnss/corrected_imu`。它不发布 GNSS
+位置，也不发布 `world -> imu` 动态 TF，避免和 LIORF 所需的
+`localization -> imu` 形成双父节点冲突。`Yunle Vehicle Tests` 中原来的
+室外 GNSS/RTK 链路需要 GNSS 硬件，拆除华测设备后不能作为室内导航入口使用。
 
 `IndoorTestTf` 以 500 ms 周期在 `/tf` 发布带当前时间戳的两段固定变换
 `localization -> imu -> lslidar16v4`，分别满足 LIORF 初始化和
 LaserOdometry 的传感器坐标转换；不周期重发 `/tf_static`，避免 Apollo
 TF Buffer 的静态消息缓存持续增长。`localization` 明确定义在 IMU 原点且
 使用相同坐标轴，因此 `localization -> imu` 按定义为单位变换，不是待测的
-雷达外参；`imu -> lslidar16v4` 使用 JD03 尺量初值：平移
-`(0.03, -0.33, 0.67) m`、绕 IMU Z 轴 `-90 deg`。该雷达外参来自 JD03 实车
-尺量和安装轴向确认，正式建图前仍需标定；`IndoorTestTf` 不能与 `StaticTf`
-同时启动。
+雷达外参；N100 设备标识为 X 向前、Y 向右、Z 向下，Y/Z 经 Yunle N100
+驱动转换后发布为 Apollo/ROS 常用的 X 向前、Y 向左、Z 向上。`imu ->
+lslidar16v4` 使用 JD03 尺量初值：平移 `(0.51, 0.00, 1.09) m`、无旋转。
+该雷达外参来自 JD03 实车尺量和安装轴向确认，正式建图前仍需标定；
+`IndoorTestTf` 不能与 `StaticTf` 同时启动。
 
 `Yunle Indoor Localization Tests` 用于加载固定点云地图进行无 GNSS
 位置的室内定位验证：
 
 - `LslidarC16V4`
-- `GnssImu`
+- `N100Imu`
 - `IndoorTestTf`
 - `IndoorLiorfOdometry`
 - `IndoorNdtLocalization`
@@ -145,11 +147,10 @@ stabilizer，但中间匹配组件改为直接加载
 `Yunle Indoor Navigation` 用于从 Dreamview Plus 启动已验证的室内导航链路：
 
 - `LslidarC16V4`
-- `GnssImu`
+- `N100Imu`
 - `IndoorTestTf`
 - `IndoorLiorfOdometry`
 - `IndoorPclOmpNdtLocalizationMap03MeasuredZStable`
-- `IndoorPlanningHeadingAdapter`
 - `IndoorRouting`
 - `IndoorCommand`
 - `IndoorEmptyPrediction`
@@ -162,10 +163,9 @@ stabilizer，但中间匹配组件改为直接加载
 使用该地图的 `base_map` 和 `routing_map`；
 `IndoorCommand` 同时启动 `external_command_process` 与 `old_routing_adapter`，
 把 Dreamview 的 `/apollo/routing_request` 转成 lane-follow command，再输出
-Planning 使用的 `/apollo/routing_response`。`IndoorPlanningHeadingAdapter`
-保留稳定 localization 的 X/Y/Z，并在 route 可用后把 Planning 私有
-localization topic 的 heading 对齐到当前 route 方向；`IndoorPlanning` 因此读取
-`/apollo/yunle/indoor/planning/localization_pose`。`IndoorEmptyPrediction`
+Planning 使用的 `/apollo/routing_response`。NDT stabilizer 已经将室内定位
+航向转换为 Apollo 车辆航向，因此 `IndoorPlanning` 和 `Control` 直接读取
+`/apollo/localization/pose`，不再用 route heading 覆盖实时航向。`IndoorEmptyPrediction`
 以 10 Hz 发布空的 `/apollo/prediction`，复现已验证 preflight 中的无障碍输入，
 不启动完整 perception/prediction 链路。
 
@@ -224,6 +224,7 @@ NDT 的在线点云外参还包含一项坐标约定转换。LS-C16 V4 的 Apoll
 ```text
 /apollo/sensor/lslidar16v4/Scan
 /apollo/sensor/lslidar16v4/PointCloud2
+/apollo/sensor/gnss/imu
 /apollo/sensor/gnss/corrected_imu
 /apollo/sensor/gnss/odometry
 /apollo/sensor/gnss/ins_stat
@@ -238,11 +239,16 @@ NDT 的在线点云外参还包含一项坐标约定转换。LS-C16 V4 的 Apoll
 /apollo/control
 ```
 
+其中 N100 室内驱动只负责 `/apollo/sensor/gnss/imu` 和
+`/apollo/sensor/gnss/corrected_imu`；`/apollo/sensor/gnss/odometry` 与
+`/apollo/sensor/gnss/ins_stat` 属于 GNSS/INS 链路，拆除华测设备后不会由
+N100 提供。
+
 ## 建图与定位路线
 
 JD03 后续按使用环境维护两条彼此独立的地图与定位链路：
 
-1. **室内激光链路**：不依赖 GNSS 位置，在 CGI-230 可提供 IMU 的条件下，
+1. **室内激光链路**：不依赖 GNSS 位置，在 N100 可提供 IMU 的条件下，
    使用 LS-C16 V4 完成激光 SLAM 建图和基于点云地图的定位；由点云生成
    俯视底图，再人工绘制车道、边界及连接关系，生成可供 Routing、Planning
    使用的室内 HD Map。该链路用于室内导航和教学。

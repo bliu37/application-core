@@ -63,7 +63,9 @@ constexpr double kControlCommandSpeedUpperToleranceKph = 0.05;
 constexpr double kStationaryFailsafeSuppressSpeedKph = 0.05;
 constexpr double kTerminalStopStationarySpeedKph = 0.10;
 constexpr double kTerminalStopZeroSpeedCommandThresholdMps = 0.05;
+constexpr double kAbsoluteTerminalStopMaxPathRemainM = 5.0;
 constexpr uint32_t kAbsoluteControlCommandTimeoutMs = 200U;
+constexpr uint32_t kAbsoluteControlCommandPendingQueueSize = 1000U;
 constexpr uint32_t kAbsoluteFailsafeSendMs = 500U;
 constexpr uint32_t kAbsoluteTerminalStopReleaseDelayMs = 5000U;
 constexpr uint32_t kAbsoluteRemoteReleaseSendMs = 2000U;
@@ -148,8 +150,12 @@ class YunleChassisReceiverComponent final
       return false;
     }
     if (config_.enable_control_send()) {
+      cyber::ReaderConfig control_reader_config;
+      control_reader_config.channel_name = config_.control_topic();
+      control_reader_config.pending_queue_size =
+          config_.control_command_pending_queue_size();
       control_reader_ = node_->CreateReader<control::ControlCommand>(
-          config_.control_topic(),
+          control_reader_config,
           [this](const std::shared_ptr<control::ControlCommand>& command) {
             OnControlCommand(command);
           });
@@ -177,7 +183,8 @@ class YunleChassisReceiverComponent final
             << config_.maximum_control_speed_kph() << " km/h and "
             << config_.maximum_control_steering_percentage()
             << "% steering. UDP peer: " << config_.remote_ip() << ":"
-            << config_.remote_port();
+            << config_.remote_port() << ". Control reader queue: "
+            << config_.control_command_pending_queue_size();
       if (config_.require_control_pad_start()) {
         AWARN << "Yunle 0x121 control transmission is gated until "
               << "Dreamview/Control sends Pad START.";
@@ -233,6 +240,9 @@ class YunleChassisReceiverComponent final
         config_.feedback_timeout_ms() == 0U ||
         config_.bms_timeout_ms() == 0U ||
         config_.max_datagrams_per_cycle() == 0U ||
+        config_.control_command_pending_queue_size() == 0U ||
+        config_.control_command_pending_queue_size() >
+            kAbsoluteControlCommandPendingQueueSize ||
         config_.control_command_timeout_ms() == 0U ||
         config_.control_command_timeout_ms() >
             kAbsoluteControlCommandTimeoutMs ||
@@ -261,7 +271,15 @@ class YunleChassisReceiverComponent final
         !std::isfinite(config_.maximum_control_steering_percentage()) ||
         config_.maximum_control_steering_percentage() <= 0.0 ||
         config_.maximum_control_steering_percentage() >
-            kAbsoluteControlSteeringLimitPercentage) {
+            kAbsoluteControlSteeringLimitPercentage ||
+        !std::isfinite(config_.zero_steering_below_speed_kph()) ||
+        config_.zero_steering_below_speed_kph() < 0.0 ||
+        config_.zero_steering_below_speed_kph() >
+            kAbsoluteControlCommandSpeedLimitKph ||
+        !std::isfinite(config_.terminal_stop_max_path_remain_m()) ||
+        config_.terminal_stop_max_path_remain_m() < 0.0 ||
+        config_.terminal_stop_max_path_remain_m() >
+            kAbsoluteTerminalStopMaxPathRemainM) {
       AERROR << "Yunle control limit exceeds the compiled low-speed safety "
                 "ceiling.";
       return false;
@@ -760,6 +778,11 @@ class YunleChassisReceiverComponent final
         (target_speed_kph > 0.0 && state_.ccu.parking_status)) {
       output->target_speed_kph = 0.0;
     }
+    if (output->brake_enable ||
+        output->target_speed_kph <= config_.zero_steering_below_speed_kph()) {
+      output->front_steering_percentage = 0.0;
+      output->rear_steering_percentage = 0.0;
+    }
 
     if (input.has_signal()) {
       if (input.signal().turn_signal() ==
@@ -822,6 +845,16 @@ class YunleChassisReceiverComponent final
       const control::ControlCommand& input,
       const YunleScuControlCommand& command) const {
     if (!input.has_speed() || !std::isfinite(input.speed())) {
+      return false;
+    }
+    if (!input.has_debug() || !input.debug().has_simple_lon_debug() ||
+        !input.debug().simple_lon_debug().has_path_remain()) {
+      return false;
+    }
+    const double path_remain =
+        input.debug().simple_lon_debug().path_remain();
+    if (!std::isfinite(path_remain) || path_remain < 0.0 ||
+        path_remain > config_.terminal_stop_max_path_remain_m()) {
       return false;
     }
     return std::abs(input.speed()) <=
