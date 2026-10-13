@@ -1,11 +1,26 @@
 #!/usr/bin/env python3
 
-"""Create a tile_map_images_creator config for a saved Yunle indoor map."""
+"""Create a tile_map_images_creator config for a saved Yunle map.
+
+Two pose sources are supported:
+
+* ``--mode slam`` (default, indoor): point clouds come from the record files and
+  poses come from ``slam_pose_result.bin`` produced by the indoor LIORF flow
+  (``enable_slam_mode: true``).
+* ``--mode rtk`` (outdoor): poses come from ``/apollo/localization/pose``
+  recorded in the same record files, i.e. tile_map_images_creator's RTK mode
+  (``enable_slam_mode: false``). The point cloud is transformed into the
+  ``localization`` frame, so StaticTf must be running with the JD03 outdoor
+  ``localization -> lslidar16v4`` extrinsic.
+"""
 
 import argparse
 import io
 import sys
 from pathlib import Path
+
+
+MODES = ("slam", "rtk")
 
 
 DEFAULT_POINT_CLOUD_CHANNEL = "/apollo/sensor/lslidar16v4/PointCloud2"
@@ -83,16 +98,27 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description=(
             "Write an image_creator_conf.pb.txt for the map_creator tile "
-            "image generator. The default config uses SLAM pose mode: point "
+            "image generator. --mode slam (default) uses SLAM pose mode: point "
             "clouds are read from record files and poses are read from "
-            "slam_pose_result.bin."
+            "slam_pose_result.bin. --mode rtk uses RTK pose mode: poses are "
+            "read from the localization channel recorded in the same record "
+            "files, and no slam_pose_result.bin is required."
         )
+    )
+    parser.add_argument(
+        "--mode",
+        choices=MODES,
+        default="slam",
+        help=(
+            "pose source: 'slam' (indoor, slam_pose_result.bin) or 'rtk' "
+            "(outdoor, localization_channel from the record). Defaults to slam."
+        ),
     )
     parser.add_argument(
         "--map-dir",
         required=True,
         help=(
-            "saved map work directory containing record/ and "
+            "saved map work directory containing record/ and, in slam mode, "
             "slam_pose_result.bin."
         ),
     )
@@ -114,7 +140,11 @@ def parse_args():
     parser.add_argument(
         "--slam-pose",
         default="",
-        help="slam_pose_result.bin path. Defaults to <map-dir>/slam_pose_result.bin.",
+        help=(
+            "slam_pose_result.bin path. Defaults to "
+            "<map-dir>/slam_pose_result.bin. Unused in --mode rtk (the proto "
+            "field is required, so the path is still written)."
+        ),
     )
     parser.add_argument(
         "--base-map-root",
@@ -195,13 +225,13 @@ def parse_args():
     return parser.parse_args()
 
 
-def validate_paths(map_dir, record_dir, slam_pose):
+def validate_paths(map_dir, record_dir, slam_pose, mode):
     if not map_dir.is_dir():
         raise FileNotFoundError("map-dir not found: {}".format(map_dir))
     if not record_dir.is_dir():
         raise FileNotFoundError(
             "record directory not found: {}".format(record_dir))
-    if not slam_pose.is_file():
+    if mode == "slam" and not slam_pose.is_file():
         raise FileNotFoundError("slam pose file not found: {}".format(slam_pose))
 
 
@@ -226,6 +256,23 @@ def validate_numeric_args(args):
 
 def build_config(args, map_dir, record_dir, slam_pose, bin_dir, image_dir):
     workspace_root = args.workspace_root
+    if args.mode == "rtk":
+        slam_mode_block = (
+            "# RTK mode: poses come from localization_channel in the record.\n"
+            "# slam_pose_path is required by the proto but is not read when\n"
+            "# enable_slam_mode is false.\n"
+            "slam_mode_selection_conf {{\n"
+            "    enable_slam_mode: false\n"
+            "    slam_pose_path: \"{slam_pose}\"\n"
+            "}}").format(slam_pose=apollo_workspace_path(slam_pose,
+                                                         workspace_root))
+    else:
+        slam_mode_block = (
+            "slam_mode_selection_conf {{\n"
+            "    enable_slam_mode: true\n"
+            "    slam_pose_path: \"{slam_pose}\"\n"
+            "}}").format(slam_pose=apollo_workspace_path(slam_pose,
+                                                         workspace_root))
     return """reader_conf {{
    point_cloud_channel: "{point_cloud_channel}"
    localization_channel: "{localization_channel}"
@@ -276,10 +323,7 @@ input_output_conf {{
     LRU_cache_size: 20
 }}
 
-slam_mode_selection_conf {{
-    enable_slam_mode: true
-    slam_pose_path: "{slam_pose}"
-}}
+{slam_mode_block}
 
 coordinate_transformer_conf {{
     worker_num: {worker_num}
@@ -306,11 +350,16 @@ debug_conf {{
         image_dir=apollo_workspace_path(image_dir, workspace_root),
         slam_pose=apollo_workspace_path(slam_pose, workspace_root),
         map_dir=apollo_workspace_path(map_dir, workspace_root),
+        slam_mode_block=slam_mode_block,
     )
 
 
 def print_change_hints(args, map_dir, map_name, record_dir, slam_pose, bin_dir,
                        image_dir, output, workspace_root):
+    print()
+    print("位姿来源模式：{}".format(
+        "SLAM（室内，读 slam_pose_result.bin）" if args.mode == "slam"
+        else "RTK（室外，读 record 里的 {}）".format(args.localization_channel)))
     print()
     print("后续如果目录或硬件变化，优先改这些参数：")
     print("  --map-dir: 当前建图工作目录，现在是 {}".format(
@@ -344,9 +393,13 @@ def print_change_hints(args, map_dir, map_name, record_dir, slam_pose, bin_dir,
                                              workspace_root)))
 
 
-def print_tile_command(output, record_dir, image_dir, workspace_root):
+def print_tile_command(output, record_dir, image_dir, workspace_root, mode):
     print()
-    print("下一步生成底图瓦片，保持 IndoorTestTf 或对应静态 TF 模块运行后执行：")
+    if mode == "rtk":
+        print("下一步生成底图瓦片。RTK 模式需要 StaticTf 运行，它提供 "
+              "localization -> lslidar16v4 静态外参：")
+    else:
+        print("下一步生成底图瓦片，保持 IndoorTestTf 或对应静态 TF 模块运行后执行：")
     print("/opt/apollo/neo/bin/tile_map_images_creator \\")
     print("  -c {} \\".format(apollo_workspace_path(output, workspace_root)))
     print("  -i {} \\".format(apollo_workspace_path(record_dir, workspace_root)))
@@ -372,19 +425,21 @@ def main():
                if args.bin_dir else map_dir / "map_bin")
 
     validate_numeric_args(args)
-    validate_paths(map_dir, record_dir, slam_pose)
+    validate_paths(map_dir, record_dir, slam_pose, args.mode)
     config = build_config(args, map_dir, record_dir, slam_pose, bin_dir, image_dir)
 
     if args.dry_run:
         print("RESULT: dry run completed; no files were changed.")
         print("workspace_root={}".format(workspace_root))
+        print("mode={}".format(args.mode))
         print("map_dir={}".format(map_dir))
         print("map_name={}".format(map_name))
         print("output={}".format(output))
         print("image_dir={}".format(image_dir))
         print_change_hints(args, map_dir, map_name, record_dir, slam_pose,
                            bin_dir, image_dir, output, workspace_root)
-        print_tile_command(output, record_dir, image_dir, workspace_root)
+        print_tile_command(output, record_dir, image_dir, workspace_root,
+                           args.mode)
         print()
         print(config.rstrip())
         return
@@ -396,11 +451,12 @@ def main():
 
     print("RESULT: wrote tile_map_images_creator config.")
     print("config={}".format(output))
+    print("mode={}".format(args.mode))
     print("map_name={}".format(map_name))
     print("image_dir={}".format(image_dir))
     print_change_hints(args, map_dir, map_name, record_dir, slam_pose, bin_dir,
                        image_dir, output, workspace_root)
-    print_tile_command(output, record_dir, image_dir, workspace_root)
+    print_tile_command(output, record_dir, image_dir, workspace_root, args.mode)
 
 
 if __name__ == "__main__":

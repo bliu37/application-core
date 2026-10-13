@@ -28,6 +28,9 @@
 | 室内激光 SLAM | LS-C16 V4 + CGI-230 IMU | 已增加 Dreamview 室内建图模式；LIORF 建图链路已完成静止、直行、转角和地图保存验证 |
 | 室内点云定位 | Map03 点云地图 + PCL-OMP NDT | 已增加不修改 Apollo 原生定位的 Yunle PCL-OMP NDT 入口；静止 60 秒诊断显示定位不再明显漂移 |
 | 室内导航 | Map03 HD Map、Routing、Planning、Control | 已固化 Dreamview 室内导航模式；地图、Routing、Planning 轨迹、START gate 和低速实车导航已进入当前稳定版 |
+| 室内导航调试 | 终点释放/蠕行/到达判据/低速转向/限速 | 已按诊断调整 4 处配置 + 1 处源码（已重建安装），实车复验待执行 |
+| 室外 RTK | CGI-230 室外建图/导航配置 | GNSS 配置、JD03 室外 TF/外参与室外采图模式（含底图脚本 RTK 模式）均已就绪；RTK 固定解、航向与 UTM 坐标已完成端到端验证，可进入采图 |
+| CGI-230 设备参数 | 安装/杆臂/航向基线（主副天线接反补偿） | 已修正九项安装参数并 `saveconfig` 持久化，断电复验与航向实测（1.2°）通过；设备未进入"组合导航模式"，不影响 Apollo 室外定位 |
 
 ## 3. 2026-07-31：建立 Yunle Profile
 
@@ -664,7 +667,439 @@ profiles/current # 本机当前 Profile 链接，是否入库应单独决定
 - 状态：N100 室内接入、流程工具和当前配置修改已完成；C++ 重编译后的全链路
   实车回归、NovAtel 配置变化的归属确认以及最终地图提交范围仍待提交前核对。
 
-## 25. 后续记录格式
+## 25. 2026-10-11：室内导航"走走停停"诊断、终点释放、低速转向与限速调整
+
+- 目的：定位并缓解云乐 JD03 室内低速导航中"走走停停、走得极慢、到达终点后不释放遥控"的问题。
+- 文件：修改
+  `profiles/yunle/modules/control/controllers/lon_based_pid_controller/conf/controller_conf.pb.txt`、
+  `profiles/yunle/modules/planning/planning_component/conf/yunle_indoor_planning.conf`、
+  `profiles/yunle/modules/canbus_vehicle/yunle/conf/yunle_chassis_apollo_control_test_conf.pb.txt`、
+  `modules/canbus_vehicle/yunle/yunle_chassis_receiver_component.cc`（源码改动，需重新 `buildtool build`）。
+- 内容：
+  - `speed_itfc_speed_cmd: 0.10 → 0.04`。终点蠕行速度原为 `0.10 m/s`，高于接收端"终点零速"
+    判据 `kTerminalStopZeroSpeedCommandThresholdMps = 0.05 m/s`，使
+    `terminal_stop_release_ready_` 永远无法成立、终点不释放；降到 `0.04` 后满足该判据。
+  - `--passed_destination_threshold=0.3`（新增；原为默认 `0.05`）。放宽 Planning 的"到达目的地"判定。
+    复验表明该项**不是**本次症状的约束条件：实测 `distance_destination` 最小 `0.00724`，本已低于原
+    阈值，却未改变"终点停车"状态；保留待继续观察。
+  - `terminal_stop_max_path_remain_m: 0.2 → 1.5`。接收端终点释放的剩余路径门槛；实测
+    `path_remain` 最低仅 `0.332 m`，从未进入 `0.2`，使释放条件恒不成立。`1.5` 在编译期上限
+    `kAbsoluteTerminalStopMaxPathRemainM = 5.0` 之内。
+  - `zero_steering_below_speed_kph: 0.35 → 0.01`（先改为 0.05，随后按现场要求改为 0.01）。接收端在
+    命令速度 ≤ 该值时把前/后转向指令强制清零（`yunle_chassis_receiver_component.cc:781-785`）。
+    第二轮实车复验中 `plan_maxv` 全程 ≤ 0.186 m/s、命令速度大量时间低于 0.35 km/h，转向因此在
+    最需要转弯的低速段被抹掉，表现为"转弯幅度不足、冲出车道"。取 0.01 后该低速限制实际等同关闭；
+    "刹车时清零转向"由 `brake_enable` 分支继续保证，停车时不会保持大舵角。
+  - `maximum_control_speed_kph: 1.5 → 3.0`，并配套修改
+    `modules/canbus_vehicle/yunle/yunle_chassis_receiver_component.cc`：
+    `kAbsoluteControlCommandSpeedLimitKph: 1.5 → 4.0`、`kAbsoluteMeasuredSpeedLimitKph: 1.7 → 4.5`，
+    同时把"命令速度超过配置上限"的行为由**整条丢弃**改为**钳制并告警**。
+    原因：原实现 `return false` 会让该帧掉进失效保护分支并下发 500 ms 刹车，一旦站点误差修正把
+    请求速度顶过上限，就会在巡航段表现为顿挫。改为钳制后速度上限只起"调速器"作用，不再丢帧。
+  - `--planning_upper_speed_limit` / `--default_cruise_speed`: `0.500 → 0.833`（m/s，即 3 km/h）。
+    仅提升接收端上限不会让车真的跑到 3 km/h，必须同时抬高规划的速度上限；
+    实测 3 km/h = 0.833 m/s，与接收端 3.0 km/h 一致。
+- 验证：各项配置改动已确认在车端软链路径（`/apollo/modules/**` → `/apollo_workspace/profiles/current`）
+  可见，无需重新执行 `aem profile use`；均需重启对应模块后生效。
+  源码改动已通过 `buildtool build -p modules/canbus_vehicle/yunle` 编译并安装成功
+  （exit=0，新库 mtime 2026-10-11 20:45）。**限速 3.0 的生效已实测验证**：以
+  `maximum_control_speed_kph: 3.0` 启动接收端成功，启动日志为
+  `Hard limits: 3 km/h and 90% steering`——若编译期上限仍是 1.5，`ValidateConfig()`
+  会直接拒绝启动，故该结果反证新常量已生效。实车复验待执行。
+- 影响/回退：全部改动都可用以下命令精确回退，互不影响，也不会触动本次会话之外的既有未提交改动
+  （`gnss_conf.pb.txt`、`static_transform_conf.pb.txt`、19:23 安装的地图均不在此列）。
+  1) 源码与配置（4 个 tracked 文件）：
+     `cd /home/yunle/application-core && git checkout -- \`
+     `modules/canbus_vehicle/yunle/yunle_chassis_receiver_component.cc \`
+     `profiles/yunle/modules/control/controllers/lon_based_pid_controller/conf/controller_conf.pb.txt \`
+     `profiles/yunle/modules/planning/planning_component/conf/yunle_indoor_planning.conf \`
+     `profiles/yunle/modules/canbus_vehicle/yunle/conf/yunle_chassis_apollo_control_test_conf.pb.txt`
+  2) 已安装的运行库：本次构建前的备份保存在容器内
+     `/opt/apollo/neo/lib/modules/canbus_vehicle/yunle/libyunle_chassis_receiver_component.so.backup_20261011_203757`；
+     回退即 `cp -a <该备份> libyunle_chassis_receiver_component.so`。**注意顺序：若把配置退回
+     `maximum_control_speed_kph: 1.5`，库可以不回退；但若把库回退成旧版，则必须同时把配置退回 1.5**，
+     否则 `ValidateConfig()` 会拒绝启动。
+  3) 本文档：`git checkout -- helpdocs/CHANGELOG_APPLICATION_CORE.md`（本文件在本次会话前无未提交改动，
+     回退只会移除本节）。
+  4) 残余风险：`control_command_timeout_ms` 仍受编译期上限 `kAbsoluteControlCommandTimeoutMs = 200U`
+     限制，本次未改动；如需放宽必须再次改常量并重建。
+- 调查结论（未改动任何代码，仅记录）：
+  - 本轮诊断所依据的运行使用的是 **2026-10-11 19:23 新安装的室内地图**：
+    `base_map`/`routing_map`/`sim_map`/`default_end_way_point.txt`/`routing_test.pb.txt` 全部更新，
+    终点 waypoint 由 `(9998.17, 9999.65)` 移至 `(10002.07, 9999.43)`，约 3.9 m。该图上
+    `stop_s`(6.826) 比 `end_s`(6.608) 大 0.218 m（停车墙落在参考线之外）稳定复现；
+    上一轮旧图上的值为 6.866 / 6.738（相差 0.128 m）。
+  - 20 秒实测采样（`/apollo/control` 的 `simple_lon_debug`）：`is_stop_reason_by_destination`
+    1944/1944 为真；`speed_reference` 中位 `0.000 m/s`、最大 `0.093 m/s`；`path_remain`
+    0.332~1.190 m；`brake_cmd` 恒为 0；`is_full_stop` 0/1944。即车辆全程处于"终点停车"决策中，
+    前进量来自纵向 PID 的站点误差 `speed_offset`，而非巡航速度。刹车无死区抖动与
+    限速冲突（巡航 1.8 km/h vs 接收端拒收 1.55 km/h）在本轮均未被触发。
+  - 接收端 `yunle_chassis_receiver_component.cc:852-858` 的释放判据
+    `ControlCommandIsTerminalZeroSpeed()` 同时要求 `path_remain ≤ terminal_stop_max_path_remain_m`
+    且命令速度 ≤ `0.05 m/s`，二者与上面的实测值叠加即构成终点死锁。
+  - Apollo 11 发行包缺陷（未修改源码）：`planning_base/common/reference_line_info.cc` 的
+    `SDistanceToRefEnd()` 先解引用 `ref_end_ptr->DebugString()` 再判断 `!ref_end_ptr`，该条件恒为假，
+    函数恒返回 `DBL_MAX`；因此 `passed_referenceline_end_threshold = 1.5 m` 这条到达兜底实际是死代码。
+  - 另发现 `dreamview_plus`（`teleop_tool`、`simulation_world` 节点）也注册了
+    `/apollo/control` 的 writer；实车导航期间使用 Dreamview 遥控/仿真面板会与控制模块争抢同一控制话题。
+  - 第二轮实车采样（`/apollo/control` + `/apollo/planning` 同步约 290 s）：
+    `plan_maxv` 全程 `0.054~0.186 m/s`，`total_path_length` 仅 `0.46~1.24 m`；行驶段
+    `is_stop_reason_by_destination` 转为 0（说明车真正跑起来时规划会给正常轨迹），`brake_cmd`
+    全程为 0。轨迹短小的原因见下一条。
+  - **轨迹为何只有约 1 米（根因，代码级）**：
+    `planning/pnc_map/lane_follow_map/lane_follow_map.cc:226-228` 在
+    `next_routing_waypoint_index_ == routing_waypoint_index_.size() - 1` 时置
+    `stop_for_destination_ = true`；该标志经 `planning_base/common/frame.cc:158-160` 成为
+    `frame->is_near_destination()`，而终点停车墙仅在它为真时才创建
+    （`traffic_rules/destination/destination.cc:63-65`），墙的位置为
+    `routing_end->s() - virtual_stop_wall_length(0.1) - stop_distance(0.2)`
+    （`destination.cc:118-124`）。室内路由只有起点/终点两个途经点，因此**车辆一旦越过第 1 个
+    途经点，"下一个途经点"即为最后一个，`stop_for_destination_` 从此恒为真**：终点墙每帧重建、
+    轨迹被截断到墙前，于是全程只有约 1 米轨迹、速度上限被压在 `0.1~0.19 m/s`。
+  - `destination.cc:81-84` 自身带有告警：`dest_sl.s() + front_edge_to_center > reference_line.Length()`
+    会 "cause ego is stoped by PATH_END fence not by destination"。本工程实测
+    `stop_s 6.826 > end_s 6.608`、车头偏移 `0.550 m`，正落在该告警条件内——车辆实际被
+    **路径末端挡墙**停住而非被"终点"停住，这是 `ReachedDestination()` 与 `mission_complete`
+    无法稳定成立的直接原因。
+  - 第二轮采样中 `/apollo/planning` 在"0.46 m 终点停车轨迹"与"空轨迹（`total_path_length = 0`）"
+    之间反复切换；空轨迹会清除接收端的 `planning_terminal_stop_received`
+    （`planning_terminal_stop_timeout_ms: 1000`），使 `terminal_stop_release_delay_ms: 800` 的连续
+    静止计时反复清零。因此即使 `terminal_stop_max_path_remain_m` 放宽到 1.5，本轮仍未发生释放
+    （全程 `release_ready=False`、`terminal_released_to_remote=False`、`remote_release_frame_count=0`）。
+    释放未成立的第二个条件是站点误差 `speed_offset` 把命令速度顶到 `0.3~1.2 km/h`，高于
+    `kTerminalStopZeroSpeedCommandThresholdMps = 0.05 m/s`。
+  - 待验证的零风险实验：在 Dreamview 里下发**带中间途经点**的 routing。此时大部分路程中
+    `next_routing_waypoint_index_ != size()-1`，`stop_for_destination_` 保持 false，终点墙不建，
+    轨迹长度与巡航速度应恢复正常。若实验成立即确认上述根因，治本方案为
+    "重画地图使终点落在参考线以内" 或 "回退到 19:23 之前的地图版本"。
+- 状态：4 项配置改动已完成；转弯不足（`zero_steering_below_speed_kph`）与终点释放两项实车复验待执行；
+  "轨迹过短"的根因已定位到代码级，治本方案（多发途经点 / 重画终点 / 回退地图）待确认。
+
+## 26. 2026-10-11：室外 RTK 建图与导航准备（GNSS 配置、JD03 室外 TF 与外参、室外采图模式）
+
+- 目的：按 `helpdocs/yunle_apollo/YUNLE_OUTDOOR_RTK_PLAN.md` 的方案，为 CGI-230 RTK 室外建图与导航
+  做配置准备（该方案文档中的 C-1 ~ C-4）。
+- 文件：
+  - 修改 `profiles/yunle/modules/drivers/gnss/conf/gnss_conf.pb.txt`（由外来 NovAtel 残留恢复为华测配置）
+  - 修改 `profiles/yunle/modules/transform/conf/static_transform_conf.pb.txt`（Apollo 默认 velodyne64 +
+    相机链路 → JD03 室外最小链路）
+  - 新增 `profiles/yunle/modules/transform/params/yunle_outdoor_localization_lidar_extrinsics.yaml`
+  - 新增 `profiles/yunle/modules/dreamview_plus/conf/hmi_modes/yunle_outdoor_mapping.pb.txt`
+  - 修改 `modules/tools/yunle_dreamview_bridge/yunle_make_map_creator_image_conf.py`（新增 RTK 模式）
+- 内容：
+  - GNSS（C-1）：`format: HUACE_TEXT`；串口
+    `/dev/serial/by-id/usb-Prolific_Technology_Inc._USB-Serial_Controller_DWCRm153609-if00-port0`、460800；
+    三条 `login_commands`（`unlog com1 HCINSPVATZCB` / `unlog com1 GPCHC` / `log com1 GPCHC ontime 0.01`）；
+    `rtk_solution_type: RTK_RECEIVER_SOLUTION`；`imu_type: CPT_XW5651`；`proj4_text` 为 UTM **zone 50** WGS84；
+    `tf { frame_id: "world" child_frame_id: "imu" enable: true }`；`use_gnss_time: true`。
+    内容与 git 提交版本一致（Apollo 11 的华测解析器只吃 `$GPCHC`/`$GPCHCX` 文本，不解析二进制）。
+  - TF（C-2）：`static_transform_conf.pb.txt` 收敛为单条 `localization → lslidar16v4`，外参文件指向新增的
+    室外 yaml。RTK 模式下 `tile_map_images_creator` 需要把点云变换到 `localization` 帧，故这条静态变换是必需的。
+    **刻意不添加** `localization → imu`：`imu` 的动态父节点由 GNSS 驱动发布（`world → imu`），再加一个静态
+    父节点会让 TF 树出现双父。
+  - 外参（C-2，已定稿）：以 `helpdocs` 之外的 Yunle Autoware 标定文档
+    （`~/下载/tmptobedeleted/YUNLE_AUTOWARE_CHANGELOG_AND_VALIDATION.md`，用户确认与当前实车安装一致）为基准。
+    该文档给出三个实测 frame（均为 `base_link` = 后轴中心，X 前 / Y 左 / Z 上，无旋转）：
+    `cgi230/imu_link (-0.03, 0.27, 0.21)`、`cgi230/gnss_link (0.59, -0.26, 1.06)`（主天线）、
+    `lidar_link (0.50, 0.00, 1.30)`。由此得
+    **`CGI-230 → 雷达 = (0.53, −0.27, 1.09) m`**，旋转取单位阵（文件
+    `yunle_outdoor_localization_lidar_extrinsics.yaml`）。
+    与 2026-10-11 的独立尺量路径（`N100 → 雷达 (0.51, 0, 1.09)` 叠加 `N100 → CGI-230 (0.02, 0.26, 0)`）
+    所得 `(0.49, −0.26, 1.09)` 相差 x 4 cm、y 1 cm、z 0 cm；采用标定值。
+  - 采图模式（C-3）：新增 `yunle_outdoor_mapping`，模块为 `LslidarC16V4`、`StaticTf`、`Gnss`、
+    `RtkLocalization` 与只读的 `YunleChassisPreview`，`operations: Record`（不含 Control 与发送使能 receiver）。
+  - 底图脚本 RTK 模式（C-4）：`yunle_make_map_creator_image_conf.py` 新增 `--mode {slam,rtk}`，默认 `slam`
+    以保持室内流程不变。`--mode rtk` 生成 `slam_mode_selection_conf { enable_slam_mode: false }`
+    （`tile_map_images_creator` 的 RTK 分支，用 record 里的 `localization_channel` 位姿拼底图），
+    跳过 `slam_pose_result.bin` 的存在性校验，并把"需要 StaticTf 提供 `localization -> lslidar16v4`"
+    打印在操作提示里。注意 `SlamModeSelectionConf` 的两个字段在 proto 里都是 `required`，因此
+    `slam_pose_path` 仍会写入，只是 RTK 模式下不被读取（生成文件里已用注释说明）。
+- 验证：C-4 脚本已完成四项静态验证：
+  （1）`ast.parse` 语法检查通过（不产生 `__pycache__`）；
+  （2）`--mode slam --dry-run` 输出 `enable_slam_mode: true`，与改动前一致；
+  （3）`--mode rtk --dry-run` 输出 `enable_slam_mode: false` 并带说明注释，提示文案切换到 StaticTf；
+  （4）反向验证：对只有 `record/`、没有 `slam_pose_result.bin` 的目录，`--mode slam` 按预期报
+  `slam pose file not found`，`--mode rtk` 正常通过——证明校验已按模式区分。
+  其余验证：`gnss_conf.pb.txt` 恢复后与 git 提交版本逐字节一致（`git status` 中该文件已不再是 modified）；
+  `static_transform_conf.pb.txt`、两个新增文件在车端均确认可读（`sed` 读取内容正常）。
+  两个**新增**文件不在既有软链中（车端 `/apollo/modules/**` 是逐文件软链，新增文件不会自动出现），
+  已按既有格式手工创建软链，目标均指向 `/apollo_workspace/profiles/current/modules/...`。
+  室外实车联调尚未开始。
+  **CGI-230 链路实测验证（2026-10-11 21:27 起，先室内、后移至室外）**：
+  - 启动方式：`mainboard -p gnss -d /apollo/modules/drivers/gnss/dag/gnss.dag`。室内验证时先停掉了
+    `n100_imu`、`yunle_indoor_liorf_odometry`、`yunle_indoor_pclomp_ndt_localization_map03_measured_z_stable`
+    与 `IndoorTestTf`，原因见下方"话题冲突"一条。
+  - **链路与解析全部正常**：`/apollo/sensor/gnss/imu`、`corrected_imu`、`odometry`、`ins_stat`
+    均实测 **98.1 Hz**；`best_pose` **1.1 Hz**（与第 6.4 节一致，华测 `best_pose` 为固定 1 Hz 节流）。
+  - **串口输出正确**：`/apollo/data/gpsbin/<时间戳>.bin` 中为 100 Hz **纯 `$GPCHC` ASCII 文本、带合法
+    校验和、无二进制混杂**，证明配置中的 `unlog com1 HCINSPVATZCB` + `log com1 GPCHC ontime 0.01`
+    确实生效（第 6.2 节的设备侧切换逻辑工作正常）。
+  - **日志中的 `HUACE ASCII message is not complete` 是正常现象**：`huace_text_parser.cc:85-88` 要求
+    累积缓冲以 `0x0A` 结尾，分片读取时必然出现该告警，解析器会把碎片累积到下一批，不是故障。
+  - **室内（无卫星）实测**：`NSV1/NSV2 = 00/00`、`Status = 00`、`Lat/Long` 为**空字段**（两个连续逗号）、
+    `ins_status = COLD_START(6)`、`sol_type = NONE(0)`、`pos_type = 0`——这是"收不到卫星"的必然结果，
+    不是设备故障。
+  - **室外（有卫星）原始报文实例**：
+    `$GPCHC,2440,49170.240,315.16,-2.28,-0.70,-0.01,0.03,0.03,0.0127,-0.0359,0.9942,40.06425325,116.36222957,34.79,0.05,0.06,-0.01,0.07,22,24,91,1,0002*42`
+    字段对照（顺序：GPSWeek,GPSTime,Heading,Pitch,Roll,gyro×3,acc×3,Lat,Long,Alt,Ve,Vn,Vu,V,NSV1,NSV2,
+    Status,Age,warning）：`acc_z = 0.9942 g`（重力正确、IMU 正常）、`Lat/Long/Alt` 有值、
+    卫星 **22/24**。Apollo 侧同一时刻为 `sol_status = SOL_COMPUTED`、`sol_type = NARROW_FLOAT(34)`、
+    `latitude/longitude = 40.0642559 / 116.3622386`、`height_msl = 35.70 m`。
+  - **`$GPCHC` 的 `Status` 字段是十六进制文本**，高半字节=卫星状态、低半字节=系统状态（手册 4.1 节，
+    第 22 项）：`42` = 高 4（RTK 稳定解定位定向）+ 低 2（组合导航模式），即历史验证过的目标状态；
+    本次在遮挡处实测为 `91` = 高 9（RTK **浮点**解、定位不定向）+ 低 1（卫导模式）；把车推到开阔处后
+    **30 秒内即收敛为 `42`**，`sol_type = INS_RTKFIXED(56)`，其后 5 分钟持续稳定（卫星 25~27、
+    Age 0~1 s、定位重复性厘米级）。**结论：先前的浮点解是遮挡/多路径造成的，不是设备或配置问题。**
+  - **航向通路已验证正确**：同一时刻对比设备 `$GPCHC` 的 `Heading`（北 0°、顺时针）与
+    `/apollo/localization/pose` 的 `heading`：`(90 − 299.810) mod 360 = 150.190`，与 Apollo 实测
+    heading **误差 0.000°**。这证明 GNSS 驱动 `PublishOdometry` 中硬编码的 `−90°` 对本设备是
+    **正确**的；方案文档中的"待确认项 2（航向 −90° 疑点）"据此关闭。
+  - `/apollo/localization/pose` 实测正常：UTM `x=445614.829 y=4435085.865 z=34.130`，与原始报文的
+    经纬高自洽；静止速度 0；`roll=−1.11° pitch=+0.51°`（停于微斜坡）。
+  - **仍有一处内部不一致（待处理）**：`pose.heading = 150.190°` 而 `pose.euler_angles.z = 60.190°`，
+    两者恒定相差 **90.000°**。heading 已证正确，故问题在 `euler_angles` 一路（由 `PublishCorrimu` 的
+    `euler.z = ins.euler.z − 90°` 填入）。使用 `euler_angles` 的消费者会拿到偏 90° 的航向，
+    需逐个确认 Planning / Control / map_creator 各自读取哪个字段。
+  - 坐标量级提示：UTM `y ≈ 4.435e6`，float32 在该量级间隔约 0.5 m，Dreamview 显示地图时可能出现
+    抖动或不显示（方案文档 §3.3 已标注），必要时采用统一平移。
+  - **由几何推导出的设备端安装参数（华测约定 X 右 / Y 前 / Z 上）**，可用于核对或写入设备：
+    ```text
+    ins2antoffset    0.53 0.62 0.85     # IMU→主天线杆臂（模长 1.18 m，横向即占 0.53 m）
+    ant2bodyoffset  -0.26 -0.59 -1.06   # 主天线→后轴中心
+    headingoffset    0.0  0.0 140.9     # 主→副天线基线夹角（副天线在主天线后 0.64 m、左 0.52 m）
+    setbaseline      0.82 0.10          # 双天线基线长度 0.825 m
+    wheeltread       ?     0.52         # 轮距待实测；轴距取 vehicle_param 的 0.52 m
+    ```
+  - **外参仍有一个待确认的前提**：Apollo 的 `localization` 帧是 CGI-230 的**输出点**，由设备端
+    `ANT2OUTPOSOFFSET` 决定（0 = IMU 点，1 = 主天线，2 = 指定目标点）。当前外参文件按"输出点为
+    IMU 点"编制；若设备实际输出到后轴中心或其他点，则需改用从该点量起的平移（例如后轴中心→雷达
+    为 `(0.50, 0.00, 1.30) m`）。该值需通过 `getting gilccfg` 回读确认。
+  - `best_pose.num_sats_* = 0` 属已知的 Apollo 11 华测解析器限制（未把 `NSV1/NSV2` 写入该字段，
+    见第 6.4 节）；卫星数应直接读原始报文的 `NSV1/NSV2`。
+  - **话题冲突（必须遵守的操作约束）**：室外链路必须使用 CGI-230 **成套**提供 `imu`/`corrected_imu`/
+    `odometry`/`ins_stat`/`best_pose`，因此启动 `Gnss` 前必须停掉 `N100Imu` 驱动（二者写同一对话题），
+    并且要停掉 `IndoorTestTf`（它给 `imu` 提供 `localization` 父节点，而 GNSS 驱动会发布 `world → imu`，
+    同时存在会造成 TF 双父）。
+  - 驱动运行期间会把原始报文持续写入 `/apollo/data/gpsbin/`，是排查数据质量与差分解状态的第一手材料。
+  - 注意：本次 `Gnss` 是命令行手动启动的（`mainboard -p gnss`），**Dreamview 不掌握该进程**；
+    若之后要从 Dreamview 启动 `Yunle Outdoor Mapping` 模式，需先手动 `kill` 掉该实例，
+    否则两个实例会抢占 `/dev/ttyUSB0`。
+- 关于 `aem profile use`（本次踩到的坑，供后续参考）：该命令依赖 `APOLLO_CONF_PATH` /
+  `APOLLO_ENV_WORKROOT` 等环境变量。在容器里用 `bash -lc` 调用且未 `source /opt/apollo/aem/activate.sh`
+  时，`APOLLO_CONF_PATH` 为空，`conf_manager.py` 会报 `dir [] not exists!`；
+  而 source 之后这两个变量又会被解析成**宿主路径**（`/home/yunle/application-core/.aem/...`），
+  在容器内不存在，报 `profiles dir not found`。宿主上则因 `/usr/bin/sudo` 的 setuid 位异常而无法执行
+  （`sudo: /usr/bin/sudo 必须属于用户 ID 0 并且设置 setuid 位`）。结论：**新增 profile 文件时，
+  要么在容器内用不带 `bash -lc` 的方式执行 `aem profile use yunle`，要么按既有格式手工补软链**；
+  本次采用后者。
+- 影响/回退：
+  - 回退 GNSS 配置：`git checkout -- profiles/yunle/modules/drivers/gnss/conf/gnss_conf.pb.txt`
+    （注意：回退后得到的是外来的 NovAtel 残留版本，**不是可用配置**，仅用于还原工作区状态）。
+  - 回退 TF 配置：`git checkout -- profiles/yunle/modules/transform/conf/static_transform_conf.pb.txt`。
+  - 删除新增文件：`rm profiles/yunle/modules/transform/params/yunle_outdoor_localization_lidar_extrinsics.yaml
+    profiles/yunle/modules/dreamview_plus/conf/hmi_modes/yunle_outdoor_mapping.pb.txt`。
+  - 删除车端软链：`rm /apollo/modules/transform/params/yunle_outdoor_localization_lidar_extrinsics.yaml
+    /apollo/modules/dreamview_plus/conf/hmi_modes/yunle_outdoor_mapping.pb.txt`。
+  - **室内链路不受影响**：室内模式使用 `yunle_indoor_test_static_transform_conf.pb.txt`（`IndoorTestTf`）
+    与 `N100Imu`，本次均未改动；`static_transform_conf.pb.txt` 只被室外/整车测试模式里的 `StaticTf` 使用。
+- 待现场确认（直接影响外参正确性）：
+  1. 设备端 `ANT2OUTPOSOFFSET` 配的是哪个输出点。若设备把位置输出到后轴中心/车辆目标点而不是 IMU
+     测量中心，则 `localization` 帧原点不是 CGI-230 的 IMU 中心，本文件的外参必须从该点重新量测。
+  2. GNSS 驱动的 `PublishOdometry` 对 `$GPCHC` 航向硬编码了 `−90°`（`data_parser.cc:290-295`）。上车后
+     必须核对 `/apollo/localization/pose` 的 heading 与实际朝向；若差 90°，说明两个坐标系之间存在旋转，
+     本文件的平移分量也必须相应旋转。
+  3. `N100 → 雷达 = (0.51, 0.00, 1.09)` 仍是尺量初值，未正式标定；雷达或任一 IMU 重新安装后都需重测。
+- 状态：配置准备完成；室外外参为**待现场核对的初值**；室外实车联调未开始。
+
+## 27. 2026-10-11：CGI-230 设备端安装参数修正（天线接反补偿）
+
+- 目的：室外 RTK 采图前排查发现，设备内保存的安装/杆臂参数与实际整车几何严重不符，会让定位输出带上
+  一个**随航向旋转的约 0.94 m 偏移**，并让航向整体偏差。不先改对设备参数，采出的底图必然扭曲。
+- 设备（非工作区文件，记录以备追溯）：
+  - 华测 CGI-230，SN `5886062`，固件 `update_CGI230_M_v1.4.5_b20250808`
+  - 差分：`SWAS_STATE:OPEN COOR:WGS84 LOGIN SUCCESS`、`RTK MODE:SWAS TYPE:TCP CONNECTED
+    IP:192.168.200.185 PORT:12003`（SWAS，且坐标系已是 WGS84，无需切换）
+  - 接口：COM1 / COM2 均为 460800
+- 判定依据（为什么按"主副天线接反"处理）：
+  1. 用户现场确认：**定位主天线插在设备左侧 `GNSS2` 接口上**；手册 2.2 节规定
+     `GNSS 1（Fakra）：定位天线`、`GNSS 2（Fakra）：定向天线`，故障表第 10 条写明
+     "设备正面右侧为 GNSS1 接口，左侧是 GNSS2 接口"，并把该情形列为"双天线接反"，
+     现象正是"标定过程中输出的状态位显示浮点解定位不定向"——与本次在遮挡处实测到的
+     `Status=91（RTK 浮点解定位不定向）`相符。
+  2. 数值比对：设备旧值 `ANT2BODYOFFSET:0.29 -0.68 -0.30` 的横向分量为正、
+     `INS2ANTOFFSET:-0.30 -0.03 0.09` 的前向分量接近 0，只有"接反"假设推出的值与之同号；
+     不接反假设下横向符号相反。
+- 内容：经用户授权，通过 COM1 修正九项参数并 `saveconfig`。几何基准取已验证的 Yunle Autoware 标定
+  （`base_link` = 后轴中心，X 前 / Y 左 / Z 上）：`cgi230/imu_link (-0.03, 0.27, 0.21)`、
+  `cgi230/gnss_link (0.59, -0.26, 1.06)`、`lidar_link (0.50, 0, 1.30)`，以及用户实测的副天线相对
+  主天线位置（后 0.64 m、左 0.52 m、同高）。按"接反"（设备认定的主天线 = 物理上位于
+  (-0.05, 0.26, 1.06) 的那根）换算到华测约定（X 右 / Y 前 / Z 上）后写入：
+
+  ```text
+  insangle 0 0 0 5 5 5
+  setheadingbase car
+  setattitudebase car
+  headingoffset 0.0 0.0 -39.1 5 5 5
+  ant2bodyoffset 0.26 0.05 -1.06 1 1 1
+  ins2antoffset 0.01 -0.02 0.85 1 1 1
+  ant2outposoffset 0 0 0 0          # 输出点由 "2 指定目标点" 改为 "0 IMU 点"
+  bodytype 2 0 0
+  wheeltread 0.462 0.500            # 轮距取底盘规格书 462 mm；轴距由 0.46 改为规格书 500 mm
+  saveconfig
+  ```
+
+  修改前后对照（`getting gilccfg` 回读）：
+
+  | 参数 | 修改前 | 修改后 |
+  | --- | --- | --- |
+  | `HEADINGOFFSET` | 0.00 0.00 **180.00** | 0.00 0.00 **-39.10** |
+  | `ANT2BODYOFFSET` | **0.29 -0.68 -0.30** | **0.26 0.05 -1.06** |
+  | `INS2ANTOFFSET` | **-0.30 -0.03 0.09** | **0.01 -0.02 0.85** |
+  | `WHEELTREAD` | 0.46 **0.46** | 0.46 **0.50** |
+  | `ANT2OUTPOSOFFSET` | **2** 0.29 -0.68 -0.30 | **0** 0.00 0.00 0.00 |
+  | `INSANGLE` / `BODYTYPE` / `POS_MEM` | 0 0 0 / 2 0 0 / CLOSE | 不变 |
+  | `BASELINE` | 0.00 0.00（未设置） | **刻意未改**：航向本已正常解出，未写入未实测校核的 0.82 m，避免破坏已工作的解 |
+
+  - **参数与物理安装的对应关系（改动天线接线前必读）**：本组参数是按"**设备认定的主天线 =
+    物理上位于左后方那一根**"推导的。实测安装（车体坐标，原点 = 后轴中心，X 前 / Y 左 / Z 上）：
+
+    | 硬件 | 安装位置 | 车体坐标 (m) |
+    | --- | --- | --- |
+    | **主天线（定位）** | **左后** | `(−0.05, +0.26, 1.06)` |
+    | **副天线（定向）** | **右前** | `(0.59, −0.26, 1.06)` |
+    | CGI-230 IMU | 车体中部偏左 | `(−0.03, +0.27, 0.21)` |
+
+    由此得到的三个几何参数及其含义：
+
+    | 参数 | 写入值 | 几何含义 |
+    | --- | --- | --- |
+    | `HEADINGOFFSET` | **−39.1** | 主(左后) → 副(右前) 基线相对车头指向**右前方** −39.1° |
+    | `ANT2BODYOFFSET` | **0.26 0.05 −1.06** | 主天线 → 后轴中心（横 0.26 / 前后 0.05 / 高 1.06 m） |
+    | `INS2ANTOFFSET` | **0.01 −0.02 0.85** | IMU → 主天线（横向与前后近似重合、高 0.85 m） |
+
+    **注意"天线安装位置"与"接线端口"是两件事**：
+    - **位置**：与上表一致 ✔（主天线在左后、副天线在右前）
+    - **接线**：定位主天线的**线插在设备左侧 `GNSS2` 端口**，而手册 2.2 节规定 `GNSS1`（右侧）
+      才是定位天线 → 按手册算属于"接反"
+    - **本组参数已把这一接线事实一并补偿进去**，因此功能正确（航向实测误差 1.2°，见"验证"第 4 条）
+
+    **若将来有人改动天线接线（把线换到别的端口），本组参数立即失配** ✗，需改用 Case 1 组
+    （对应"定位天线接 GNSS1 / 主天线在前右"的布置）并重新做航向验证：
+
+    ```text
+    headingoffset  0.0  0.0  140.9  5 5 5
+    ant2bodyoffset -0.26 -0.59 -1.06 1 1 1
+    ins2antoffset   0.53  0.62  0.85 1 1 1
+    ant2outposoffset 0
+    saveconfig
+    ```
+
+- 验证：
+  1. 九条命令与 `saveconfig` 均回 `$command,[...],ok`，回读值即上表"修改后"。
+  2. **断电重启后再次回读，九项参数全部保持** → `saveconfig` 持久化成功。
+  3. 位置输出发生约 1 m 位移（lat +0.25 m、lon −0.69 m、**alt −0.6 m**），与"修掉 0.94 m 旋转偏移、
+     其中垂直分量 0.76 m"的预期一致。
+  4. **航向实测**：车头朝东（用户指南针确认 ≈90°）时设备报 `Heading = 88.75~88.76°`，误差约 1.2°。
+  5. Apollo 侧端到端复核：`best_pose.sol_type = INS_RTKFIXED(56)`、`ins_stat.pos_type = 56`；
+     `/apollo/localization/pose` 的 UTM 与设备经纬度用独立 UTM 实现比对为
+     ΔE 0.19 m / ΔN 0.03 m / Δz 0.00 m；航向 `(90 − 设备Heading) mod 360` 与 Apollo `heading`
+     一致到 0.4°。
+  6. 遗留：设备 `Status` 低半字节仍为 `0（初始化）`，未进入 `2（组合导航模式）`。经查
+     `huace_base_parser.cc` 的 `PrepareMessageStatus`：`sol_type` 只由**高半字节**（卫星状态，
+     当前 4 = RTK 稳定解定位定向）决定，故 Apollo 侧 `sol_type = INS_RTKFIXED`；而 `rtk_localization`
+     只检查 `pos_type`、不检查 `sol_status`，**因此不影响室外定位与采图**。若要恢复 INS 桥接能力
+     （GNSS 短时丢失时靠惯导续推），需以 >0.5 m/s 持续行驶 30~60 s 让其完成组合导航对准。
+  7. **航向验证方法（判断"参数与安装是否匹配"的唯一可靠办法，以后动过天线必做）**：
+     把车头对准一个**已知方向**（手机指南针读数即可），在**有固定解**（`Status` 高半字节 = 4）时读
+     设备 `$GPCHC` 的 `Heading`，或读 `/apollo/localization/pose` 的 `heading`
+     （注意后者以东向为 0、逆时针为正，换算关系 `heading = (90 − 设备Heading) mod 360`）：
+
+     | 实测偏差 | 结论 | 处理 |
+     | --- | --- | --- |
+     | **1~2°** | 参数与安装**匹配** | 无需处理（2026-10-11 实测：车头朝东 90°，设备报 88.76°） |
+     | 约 **39°** | `HEADINGOFFSET` 与天线布置不符（多半是主副天线角色判断反了） | 换成另一组 Case 的 `HEADINGOFFSET`（−39.1 ↔ 140.9） |
+     | 约 **180°** | 主副天线整体反了 | 检查接线端口与两组参数的对应关系 |
+
+     **注意**：该验证**必须在室外有固定解时做** —— 无卫星（`Status=00`、`NSV=00/00`）时
+     `Heading` 无效，不能用来判断。
+  8. **断电保留验证（2026-10-12 补做）**：给 CGI-230 断电、等待后重新上电，再次 `getting gilccfg`
+     回读：**九项参数全部保持**，且 COM1 仍以 **100 Hz** 输出 `$GPCHC`（"输出 GPCHC"这条持久化
+     同样保留）→ 证明 `saveconfig` 已把参数与输出配置真正写入非易失存储 ✔
+- 影响/回退：
+  - **回退到改动前的原始设备值**（已实测可用）：
+    ```text
+    headingoffset  0.00  0.00  180.00  5 5 5
+    ant2bodyoffset  0.29 -0.68 -0.30 0.05 0.05 0.05
+    ins2antoffset  -0.30 -0.03  0.09 0.05 0.05 0.05
+    ant2outposoffset 2 0.29 -0.68 -0.30
+    wheeltread 0.46 0.46
+    saveconfig
+    ```
+  - **操作历史（务必知悉，避免误读本文档）**：本次设备侧先后发生五次操作，本节上文"内容"记录的是
+    第 ① 次：
+    1. **2026-10-11 首次写入**修正参数 + `saveconfig`（即上文"内容"表格）
+    2. 同日 **回退**到改前原值（使用上面的回退命令块，已实测可用、回读确认）
+    3. 同日 **再写回**修正参数 —— 回退后设备同样停在 `Status=40`，未能进入组合导航；而参数与安装的
+       几何对应关系已被航向实测（1.2°）证实正确，故按用户要求写回修正版
+    4. 同日 **二次写入**修正参数并回读确认（幂等操作，无副作用）
+    5. **2026-10-12 断电验证**：重新上电后回读，九项参数与 GPCHC 输出配置均保留 ✔
+
+    **最终状态 = 修正参数已持久化**（与第 ① 次写入内容一致）。
+  - **关于"未进入组合导航（`Status` 低半字节 = 0）"的结论**：回退到原值后设备**同样停在 `40`**，
+    说明二者**无直接因果关系**；且 2026-10-12 的监视记录显示，当时的"标定驾驶"**速度仅
+    0.15~0.56 m/s**，低于手册 §7.2.2 对低速车载模式要求的 **>0.5 m/s**，这才是未完成标定的
+    直接原因。后续需按手册（>0.5 m/s、连续约 5 分钟、全程固定解）重新标定后再下结论。
+  - **外参不受天线接法影响**：输出点已改为 IMU 点，`localization → lslidar16v4 = (0.53, −0.27, 1.09)`
+    继续有效——外参只取决于设备输出哪个点，与主副天线如何接无关。
+  - **副作用（需知悉）**：`saveconfig` 会把设备当时的**运行态配置整体存盘**，因此原本持久化的
+    `HCINSPVATZCB` 二进制输出（Autoware 流程依赖）被改成了 `$GPCHC` 文本（已实测：上电即输出
+    GPCHC 100 Hz）。对 Apollo 无影响（驱动启动时本就要切到 GPCHC）；**若仍需 Autoware，恢复二进制**：
+    ```text
+    unlog com1 GPCHC
+    log com1 HCINSPVATZCB ontime 0.01
+    saveconfig
+    ```
+  - 本次为**设备持久配置**改动，不涉及工作区文件；工作区侧的配置与源码改动见第 26 条。
+- 状态：已完成并验证。含**二次写入**与**断电保留验证**（2026-10-12）；最终生效值 = 上文"修改后"列。
+  唯一遗留是设备未进入"组合导航模式"（经查与参数取值无直接因果，原因是标定驾驶速度未达
+  >0.5 m/s，见"影响/回退"最后一条），不影响 Apollo 室外定位与采图。
+
+## 28. 2026-10-11：清理 data/map_data 下的失效软链备份目录（消除 aem profile 报错）
+
+- 目的：`aem profile use yunle` 会执行 `conf_manager.py recover`（调用点 `aem-profile:82`），该步骤要求
+  扫描树内不存在失效软链。`data/map_data` 下 21 个地图备份目录中含 188 条失效软链，导致 recover 返回
+  失败并以 `[FATAL] recover invalid conf failed.` 中止 profile 切换。本次把备份目录移出扫描树以消除该报错。
+  （`aem bootstrap start --plus` 不走该步骤，故此前未阻塞 Dreamview 启动。）
+- 位置与文件（均为数据目录，不涉及工程源码或 Profile 配置）：
+  - 移出前：`data/map_data/yunle_indoor_map03_planning.backup_*` 21 个（含 188 条失效软链），
+    以及 `yunle_indoor_map03_planning.backup_20261011_210118`、
+    `yunle_indoor_map03_planning.bad_translate_backup_20260906_205437` 2 个（链接完好），共 23 个目录
+  - 移出后：`map_data_backups/`（工作区根目录，与 `data/` 同级，位于 AEM 扫描树 `/apollo` **之外**）
+- 内容与判据：
+  - `APOLLO_CONF_PATH = ${APOLLO_ENV_ROOT}/apollo`（`activate.sh:114`），容器内 `/apollo` 即宿主的
+    `.aem/envroot/apollo`，因此 recover 的扫描范围是**整棵 `/apollo` 树**。把备份留在 `data/` 下的任何
+    位置仍会被扫到（第一次移到 `data/map_data_backups` 即因此无效），必须移到 `/apollo` 之外。
+  - 失效链接成因：备份目录内保存的是指向 `profiles/current/modules/map/data/<备份目录名>/...` 的软链，
+    而 profile 中并不存在同名备份文件——地图安装/备份工具留下的残留（时间戳自 2026-08-12 至 2026-10-11）。
+  - `conf_manager.py:82-107` 的 recover 仅在"恢复源文件存在"时才执行 `os.remove` + `os.symlink`；本次
+    188 条全部命中 `continue` 分支，**该报错自始至终没有删除或改写任何文件**。
+- 验证：
+  1. 用与 recover 相同的 `os.walk(target, followlinks=False)` 复现扫描：移出前 `/apollo` 下失效软链
+     188 条（全部位于 `data/map_data_backups`），移出后 **0 条**。
+  2. 生效地图 `data/map_data/yunle_indoor_map03_planning` 的 9 个文件全部可读（9/9），
+     `find -xtype l` 计数 0；`profiles/current` 树失效软链同样为 0。
+  3. `data/map_data` 现仅含 `borregas_ave`、`demo`、`dumps` 与本车生效地图 `yunle_indoor_map03_planning`。
+  4. 移动后 23 个目录完整保留于 `map_data_backups/`，目录属主已改为 yunle，便于日后回退操作。
+- 影响/回退：
+  - **未删除任何数据**，仅改变位置。回退命令（完全复原）：
+    `mv /home/yunle/application-core/map_data_backups/* /home/yunle/application-core/data/map_data/`
+    ——注意复原后 `aem profile use` 会再次因这 188 条失效软链报错。
+  - `map_data_backups/` 在工作区根目录、未被 git 跟踪（`.gitignore` 未忽略该名称，会出现在 `git status`
+    的未跟踪列表中）。
+  - 本次改动不影响地图内容、不影响室内导航与室外采图链路。
+- 状态：已完成。
+
+## 29. 后续记录格式
 
 后续每次经确认实施改动时，在本文档顶部当前状态中同步更新，并在本节之前追加如下条目：
 

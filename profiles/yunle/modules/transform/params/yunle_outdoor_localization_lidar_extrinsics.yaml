@@ -1,0 +1,48 @@
+# JD03 outdoor extrinsic: CGI-230 -> LS-C16 V4 lidar.
+#
+# Source: the validated Yunle Autoware sensor-kit calibration documented in
+# ~/下载/tmptobedeleted/YUNLE_AUTOWARE_CHANGELOG_AND_VALIDATION.md, which the user
+# confirmed still matches the current physical installation (2026-10-05 install,
+# sensors not moved since). All three frames below are in base_link (= rear-axle
+# centre, X forward / Y left / Z up, no rotation):
+#
+#   base_link -> cgi230/imu_link   (-0.03,  0.27, 0.21) m   <- CGI-230 IMU
+#   base_link -> cgi230/gnss_link  ( 0.59, -0.26, 1.06) m   <- GNSS1 main antenna
+#   base_link -> lidar_link        ( 0.50,  0.00, 1.30) m   <- LS-C16 V4
+#
+# => CGI-230 -> lslidar16v4 = lidar - imu = (0.53, -0.27, 1.09) m
+#
+# Cross-check against the independent tape measurement made on 2026-10-11
+# (N100 -> lidar (0.51, 0, 1.09); CGI-230 26 cm left of and 2 cm ahead of the
+# N100): that route gives (0.49, -0.26, 1.09) m. The two agree to 4 cm in x,
+# 1 cm in y and 0 cm in z; the calibration values above are used because they
+# come from one coherent, on-vehicle-verified set.
+#
+# ASSUMPTION STILL TO CONFIRM ON THE DEVICE: the Apollo "localization" frame is
+# the CGI-230 *output* point, which the device selects with ANT2OUTPOSOFFSET
+# (0 = IMU point, 1 = main antenna, 2 = a specified target point). This file
+# assumes the output is the IMU point. If the device is configured to output at
+# a different point, replace the translation with the lidar position measured
+# from THAT point (e.g. rear-axle centre -> lidar is (0.50, 0.00, 1.30) m).
+#
+# Note: the heading path was verified on the vehicle on 2026-10-11 - Apollo's
+# pose.heading matches the device's dual-antenna heading exactly via
+# (90 - device_heading) mod 360, so the localization frame axes do match the
+# vehicle body axes and this translation can be used as-is.
+child_frame_id: lslidar16v4
+transform:
+  translation:
+    x: 0.53
+    y: -0.27
+    z: 1.09
+  rotation:
+    x: 0.0
+    y: 0.0
+    z: 0.0
+    w: 1.0
+header:
+  seq: 0
+  stamp:
+    secs: 0
+    nsecs: 0
+  frame_id: localization

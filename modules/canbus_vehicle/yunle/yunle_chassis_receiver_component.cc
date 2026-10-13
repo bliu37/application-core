@@ -55,8 +55,8 @@ constexpr uint32_t kStandardCanIdMask = 0x7FFU;
 constexpr uint32_t kExtendedCanIdMask = 0x1FFFFFFFU;
 constexpr double kPi = 3.14159265358979323846;
 constexpr int kSocketReceiveBufferSize = 4 * 1024 * 1024;
-constexpr double kAbsoluteControlCommandSpeedLimitKph = 1.5;
-constexpr double kAbsoluteMeasuredSpeedLimitKph = 1.7;
+constexpr double kAbsoluteControlCommandSpeedLimitKph = 4.0;
+constexpr double kAbsoluteMeasuredSpeedLimitKph = 4.5;
 constexpr double kAbsoluteControlSteeringLimitPercentage = 90.0;
 constexpr double kControlCommandSpeedNegativeToleranceMps = 0.02;
 constexpr double kControlCommandSpeedUpperToleranceKph = 0.05;
@@ -743,10 +743,16 @@ class YunleChassisReceiverComponent final
 
     const double requested_speed_kph =
         (input.speed() < 0.0 ? 0.0 : input.speed()) * 3.6;
+    // The configured maximum is a governor, not a validity gate: clamp an
+    // over-limit request instead of rejecting the whole command. Rejecting
+    // would drop the frame into the failsafe path and send 500 ms of brake
+    // whenever the station-error correction pushes the request above the
+    // limit, which shows up on the vehicle as stutter at cruise speed.
     if (requested_speed_kph > config_.maximum_control_speed_kph() +
                                   kControlCommandSpeedUpperToleranceKph) {
-      *reason = "ControlCommand exceeds the configured speed limit";
-      return false;
+      AWARN << "ControlCommand speed " << requested_speed_kph
+            << " kph exceeds the configured limit "
+            << config_.maximum_control_speed_kph() << " kph; clamping.";
     }
     const double target_speed_kph =
         Clamp(requested_speed_kph, 0.0,

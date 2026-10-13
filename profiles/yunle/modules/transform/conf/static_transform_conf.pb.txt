@@ -1,45 +1,20 @@
-extrinsic_file {
-    frame_id: "novatel"
-    child_frame_id: "velodyne64"
-    file_path: "/apollo/modules/drivers/lidar/velodyne/params/velodyne64_novatel_extrinsics.yaml"
-    enable: true
-}
-
+# JD03 outdoor TF chain (CGI-230 RTK localization).
+#
+# In the outdoor chain the RTK localization frame ("localization") is the
+# CGI-230 output point, and the GNSS driver publishes the dynamic
+# world -> imu transform (see gnss_conf.pb.txt). Only the lidar needs a static
+# transform, because tile_map_images_creator in RTK mode transforms the
+# recorded point cloud into the "localization" frame.
+#
+# Do NOT add a static localization -> imu entry here: "imu" already gets
+# "world" as its parent from the GNSS driver at run time, and a second parent
+# would make the TF tree inconsistent.
+#
+# Indoor modes use a separate file (yunle_indoor_test_static_transform_conf.pb.txt
+# via IndoorTestTf) and are not affected by this file.
 extrinsic_file {
     frame_id: "localization"
-    child_frame_id: "novatel"
-    file_path: "/apollo/modules/localization/msf/params/novatel_localization_extrinsics.yaml"
-    enable: true
-}
-
-extrinsic_file {
-    frame_id: "velodyne64"
-    child_frame_id: "camera"
-    file_path: "/apollo/modules/perception/data/params/camera_extrinsics.yaml"
-    enable: true
-}
-
-extrinsic_file {
-    frame_id: "camera_00"
-    child_frame_id: "camera_00"
-    file_path: "/apollo/modules/perception/data/params/camera_00_extrinsics.yaml"
-    enable: true
-}
-extrinsic_file {
-    frame_id: "camera_00"
-    child_frame_id: "camera_01"
-    file_path: "/apollo/modules/perception/data/params/camera_01_extrinsics.yaml"
-    enable: true
-}
-extrinsic_file {
-    frame_id: "camera_00"
-    child_frame_id: "camera_02"
-    file_path: "/apollo/modules/perception/data/params/camera_02_extrinsics.yaml"
-    enable: true
-}
-extrinsic_file {
-    frame_id: "camera_00"
-    child_frame_id: "camera_03"
-    file_path: "/apollo/modules/perception/data/params/camera_03_extrinsics.yaml"
+    child_frame_id: "lslidar16v4"
+    file_path: "/apollo/modules/transform/params/yunle_outdoor_localization_lidar_extrinsics.yaml"
     enable: true
 }

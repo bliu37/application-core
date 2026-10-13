@@ -1,0 +1,238 @@
+{
+  "header": {
+    "version": "yunle_indoor_new_planning_float_safe",
+    "date": "1791723645186"
+  },
+  "point": [
+    {
+      "id": "1",
+      "position": {
+        "x": 53.3137,
+        "y": 0.5195
+      },
+      "type": 1
+    },
+    {
+      "id": "2",
+      "position": {
+        "x": 53.2824,
+        "y": -2.06
+      },
+      "type": 1
+    },
+    {
+      "id": "3",
+      "position": {
+        "x": 49.8737,
+        "y": -2.071
+      },
+      "type": 1
+    },
+    {
+      "id": "4",
+      "position": {
+        "x": 49.8956,
+        "y": 0.5201
+      },
+      "type": 1
+    },
+    {
+      "id": "5",
+      "position": {
+        "x": 47.0725,
+        "y": -2.2587
+      },
+      "type": 1
+    },
+    {
+      "id": "6",
+      "position": {
+        "x": 49.6265,
+        "y": -2.2697
+      },
+      "type": 1
+    },
+    {
+      "id": "7",
+      "position": {
+        "x": 49.621,
+        "y": -5.2247
+      },
+      "type": 1
+    },
+    {
+      "id": "8",
+      "position": {
+        "x": 47.056,
+        "y": -5.2472
+      },
+      "type": 1
+    }
+  ],
+  "boundary": [
+    {
+      "id": "1",
+      "attr": {
+        "type": 4
+      },
+      "point_id": [
+        "2",
+        "3"
+      ],
+      "type": 7,
+      "controlsPosition": [],
+      "roadBoundaryId": []
+    },
+    {
+      "id": "2",
+      "attr": {
+        "type": 4
+      },
+      "point_id": [
+        "1",
+        "4"
+      ],
+      "type": 7,
+      "controlsPosition": [],
+      "roadBoundaryId": []
+    },
+    {
+      "id": "3",
+      "attr": {
+        "type": 4
+      },
+      "point_id": [
+        "6",
+        "7"
+      ],
+      "type": 7,
+      "controlsPosition": [],
+      "roadBoundaryId": []
+    },
+    {
+      "id": "4",
+      "attr": {
+        "type": 4
+      },
+      "point_id": [
+        "5",
+        "8"
+      ],
+      "type": 7,
+      "controlsPosition": [],
+      "roadBoundaryId": []
+    },
+    {
+      "id": "5",
+      "attr": {
+        "type": 4
+      },
+      "point_id": [
+        "3",
+        "6"
+      ],
+      "type": 13,
+      "controlsPosition": [
+        {
+          "x": 49.6929975200511,
+          "y": -2.0716002605066453
+        },
+        {
+          "x": 49.62670914207897,
+          "y": -2.133227625897126
+        }
+      ],
+      "roadBoundaryId": []
+    },
+    {
+      "id": "6",
+      "attr": {
+        "type": 4
+      },
+      "point_id": [
+        "4",
+        "5"
+      ],
+      "type": 13,
+      "controlsPosition": [
+        {
+          "x": 47.902133658119624,
+          "y": 0.5204346440875643
+        },
+        {
+          "x": 47.083304241239865,
+          "y": -0.2909494646365671
+        }
+      ],
+      "roadBoundaryId": []
+    }
+  ],
+  "roadBoundary": [],
+  "lane": [
+    {
+      "id": "1",
+      "attr": {
+        "speed": 10,
+        "direction": 1,
+        "prossibleDrivingDirection": 1,
+        "laneType": 1
+      },
+      "left_boundary_id": "1",
+      "right_boundary_id": "2",
+      "groudId": "1",
+      "left_boundary_reverse": false,
+      "right_boundary_reverse": false,
+      "width": 1.5035630081489249,
+      "type": 1,
+      "arrowId": "1"
+    },
+    {
+      "id": "2",
+      "attr": {
+        "speed": 10,
+        "direction": 1,
+        "prossibleDrivingDirection": 1,
+        "laneType": 1
+      },
+      "left_boundary_id": "3",
+      "right_boundary_id": "4",
+      "groudId": "2",
+      "left_boundary_reverse": false,
+      "right_boundary_reverse": false,
+      "width": 1.8948896884929027,
+      "type": 1,
+      "arrowId": "2"
+    },
+    {
+      "id": "3",
+      "attr": {
+        "speed": 10,
+        "direction": 1,
+        "prossibleDrivingDirection": 1,
+        "laneType": 1
+      },
+      "left_boundary_id": "5",
+      "right_boundary_id": "6",
+      "groudId": "3",
+      "left_boundary_reverse": false,
+      "right_boundary_reverse": false,
+      "width": 4,
+      "type": 2,
+      "arrowId": "3"
+    }
+  ],
+  "crosswalk": [],
+  "speed_bump": [],
+  "junction": [],
+  "stopLine": [],
+  "trafficSignal": [],
+  "parkingSpace": [],
+  "stopSign": [],
+  "yieldSign": [],
+  "basemapCenter": {
+    "x": 9952.0,
+    "y": 10000.0
+  },
+  "area": [],
+  "barrierGate": []
+}
